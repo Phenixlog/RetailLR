@@ -82,7 +82,7 @@ export default function LoginPage() {
               </span>
             </h1>
             <p className="text-stone-600 text-sm font-medium">
-              Plateforme de gestion logistique
+              Plateforme de gestion commande magasin
             </p>
           </div>
 
@@ -187,9 +187,6 @@ export default function LoginPage() {
               ))}
             </div>
 
-            <p className="text-xs text-center text-stone-500 mt-6">
-              Mot de passe par défaut : <code className="px-2 py-1 bg-stone-100 rounded font-mono text-primary-600">123456</code>
-            </p>
           </div>
 
           {/* Footer */}
