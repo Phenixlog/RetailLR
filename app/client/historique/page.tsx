@@ -116,11 +116,19 @@ export default function HistoriquePage() {
         (cmp: any) => cmp.magasin_id === magasin.magasins.id && cmp.produit_id === cp.produit_id
       )
 
+      // Calculer la quantité globale = somme des quantités de tous les magasins
+      const quantiteGlobale = selectedCommande.commande_magasins.reduce((sum: number, cm: any) => {
+        const mp = selectedCommande.commande_magasin_produits?.find(
+          (cmp: any) => cmp.magasin_id === cm.magasins.id && cmp.produit_id === cp.produit_id
+        )
+        return sum + (mp?.quantite ?? cp.quantite)
+      }, 0)
+
       return {
         produit_id: cp.produit_id,
         produit: cp.produits,
         quantite: magasinProduit?.quantite || cp.quantite, // Quantité spécifique ou globale
-        quantiteGlobale: cp.quantite
+        quantiteGlobale: quantiteGlobale
       }
     })
 
@@ -357,17 +365,28 @@ export default function HistoriquePage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
-                        {selectedCommande.commande_produits.map((cp: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-stone-50">
-                            <td className="px-4 py-3 text-sm font-medium">{cp.produits.nom}</td>
-                            <td className="px-4 py-3 text-sm text-stone-600">{cp.produits.reference}</td>
-                            <td className="px-4 py-3 text-sm text-right">
-                              <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-lg font-bold text-sm">
-                                {cp.quantite}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {selectedCommande.commande_produits.map((cp: any, idx: number) => {
+                          // Calculer la quantité globale = somme des quantités par magasin
+                          const totalQuantity = selectedCommande.commande_magasins.reduce((sum: number, cm: any) => {
+                            const magasinProduit = selectedCommande.commande_magasin_produits?.find(
+                              (cmp: any) => cmp.magasin_id === cm.magasins.id && cmp.produit_id === cp.produit_id
+                            )
+                            // Si quantité spécifique existe, l'utiliser, sinon utiliser la quantité de base
+                            return sum + (magasinProduit?.quantite ?? cp.quantite)
+                          }, 0)
+
+                          return (
+                            <tr key={idx} className="hover:bg-stone-50">
+                              <td className="px-4 py-3 text-sm font-medium">{cp.produits.nom}</td>
+                              <td className="px-4 py-3 text-sm text-stone-600">{cp.produits.reference}</td>
+                              <td className="px-4 py-3 text-sm text-right">
+                                <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-lg font-bold text-sm">
+                                  {totalQuantity}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
