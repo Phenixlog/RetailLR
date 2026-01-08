@@ -30,14 +30,16 @@ export function ProductCardWithCart({ produit }: ProductCardWithCartProps) {
 
     return (
         <div className={`relative group rounded-xl border-2 transition-all duration-200 overflow-hidden ${inCart
-                ? 'border-primary-400 bg-gradient-to-br from-primary-50 to-accent-50 shadow-lg shadow-primary-500/10'
-                : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
+            ? 'border-primary-400 bg-gradient-to-br from-primary-50 to-accent-50 shadow-lg shadow-primary-500/10'
+            : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-md'
             }`}>
-            {/* Badge quantité */}
-            {inCart && totalQty > 0 && (
+            {/* Badge checkmark */}
+            {inCart && (
                 <div className="absolute top-2 right-2 z-10">
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white text-sm font-bold rounded-full shadow-lg">
-                        {totalQty}
+                    <span className="inline-flex items-center justify-center w-7 h-7 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full shadow-lg">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                     </span>
                 </div>
             )}
@@ -69,10 +71,10 @@ export function ProductCardWithCart({ produit }: ProductCardWithCartProps) {
                     onClick={handleToggle}
                     disabled={noMagasinsSelected && !inCart}
                     className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-200 ${inCart
-                            ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                            : noMagasinsSelected
-                                ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:shadow-lg hover:shadow-primary-500/30'
+                        ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                        : noMagasinsSelected
+                            ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:shadow-lg hover:shadow-primary-500/30'
                         }`}
                 >
                     {inCart ? (
