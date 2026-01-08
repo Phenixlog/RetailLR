@@ -208,58 +208,87 @@ export default function AdminOrderDetailPage() {
   async function handleGenerateEmail() {
     setGeneratingEmail(true)
     try {
-      // Prepare photo URLs
-      const photoUrls = photos.map(photo =>
-        supabase.storage.from('order-photos').getPublicUrl(photo.file_path).data.publicUrl
-      )
+      // Get the first magasin for personalized greeting
+      const firstMagasin = commande.commande_magasins[0]?.magasins
+      const magasinCode = firstMagasin?.code || 'XXXXX'
+      const magasinNom = firstMagasin?.nom || 'Magasin'
 
-      // Map status to French
-      const statusMap: Record<string, string> = {
-        en_attente: 'en attente de traitement',
-        confirmee: 'confirmée',
-        en_preparation: 'en cours de préparation',
-        envoyee: 'envoyée'
-      }
+      // Build product list with quantities per magasin
+      const produitsWithQty = commande.commande_produits.map((cp: any) => {
+        // Sum quantities across all magasins for this product
+        let totalQty = 0
+        commande.commande_magasins.forEach((cm: any) => {
+          const specificQty = commande.commande_magasin_produits?.find(
+            (cmp: any) => cmp.magasin_id === cm.magasin_id && cmp.produit_id === cp.produit_id
+          )
+          totalQty += specificQty?.quantite || cp.quantite
+        })
+        return {
+          nom: cp.produits.nom,
+          reference: cp.produits.reference,
+          description: cp.produits.description || '',
+          quantite: totalQty
+        }
+      })
 
       // Try OpenRouter API first (if available)
       const openrouterKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY
 
       if (openrouterKey) {
-        const prompt = `Tu es un assistant qui génère des emails professionnels pour Phenix Log, une entreprise de logistique.
+        const prompt = `Tu es Adriana SALGADO de Phenix Log. Tu génères des emails professionnels pour informer les magasins de l'envoi de leurs commandes.
 
-Voici les détails de la commande :
-- ID: ${commande.id.slice(0, 8)}
-- Statut: ${statusMap[commande.statut] || commande.statut}
-- Client: ${commande.users?.email || 'N/A'}
-- Nombre de magasins: ${commande.commande_magasins.length}
-- Nombre de produits: ${commande.commande_produits.length}
-- Nombre de photos: ${photos.length}
+DONNÉES DE LA COMMANDE :
+- Magasin destinataire: ${magasinNom}
+- Code box: ${magasinCode}
+- Email client: ${commande.users?.email || 'N/A'}
 
-Magasins concernés:
-${commande.commande_magasins.map((cm: any) => `- ${cm.magasins.nom} (${cm.magasins.code}) - ${cm.magasins.ville}`).join('\n')}
+Produits commandés (avec quantités totales) :
+${produitsWithQty.map((p: any) => `- ${p.quantite} x ${p.nom} (${p.reference})`).join('\n')}
 
-Produits commandés:
-${commande.commande_produits.map((cp: any) => `- ${cp.produits.nom} (${cp.produits.reference}) - Quantité: ${cp.quantite}`).join('\n')}
+TEMPLATE À SUIVRE (adapte le contenu selon les produits) :
 
-IMPORTANT - CHARTE GRAPHIQUE PHENIX LOG:
-- Header avec gradient: background: linear-gradient(135deg, #ff3366 0%, #ff7b3d 100%)
-- Couleurs principales: #ff3366 (rose) et #ff7b3d (orange)
-- Police: Arial, sans-serif
-- Couleurs texte: #374151 (gris foncé), #6b7280 (gris moyen)
-- Backgrounds: #f9fafb (gris très clair), #ffffff (blanc)
+---
+Bonjour [Prénom ou "l'équipe"],
 
-Génère un email professionnel en HTML avec ces contraintes:
-1. Header avec le gradient Phenix Log et titre blanc "Mise à jour de votre commande"
-2. Section info commande avec numéro et statut
-3. Tableaux/listes stylés pour magasins et produits
-4. Design responsive (max-width: 600px)
-5. Styles inline uniquement (pas de CSS externe)
-6. Signature: "L'équipe Phenix Log" avec le gradient en texte si possible
-7. Footer gris avec disclaimer automatique
+Nous avons déposé une enveloppe à ton attention dans le box ${magasinCode} qui partira prochainement de quai30.
 
-NE MENTIONNE PAS les photos dans le HTML - elles seront ajoutées automatiquement après.
+Elle contient votre commande de consommables :
+[LISTE DES PRODUITS AVEC QUANTITÉS - format "X rouleaux de..." ou "X badges..." etc.]
 
-Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (Outlook, Gmail, etc.)`
+Nous avons également déposé dans le box une enveloppe avec les échantillons canapé LRI pour PE26.
+
+Pourrais-tu revenir vers moi lorsque vous les aurez reçu ?
+
+Merci d'avance.
+
+
+Pour info, voici la liste des tissus envoyés :
+[SI PRODUITS CONTIENNENT DES TISSUS/ÉCHANTILLONS, LES LISTER AINSI:]
+MODÈLE
+TYPE DE TISSU
+COULEUR
+Nouveauté PE26
+
+[RÉPÉTER POUR CHAQUE TISSU]
+
+
+Cordialement,
+
+Adriana SALGADO
+PHENIX LOG
+---
+
+RÈGLES IMPORTANTES :
+1. Génère UNIQUEMENT du texte brut (PAS de HTML, pas de markdown)
+2. Analyse les noms des produits pour identifier :
+   - Les consommables (stickers, badges, réglettes, etc.) -> à lister avec quantités
+   - Les tissus/échantillons (termes comme VELOURS, CHENILLE, LIN, COTON, etc.) -> à lister en format colonne
+3. Si le nom du produit contient un modèle (AMAD, AMEDEA, FANO, etc.) et une couleur, extrais-les
+4. La phrase sur les échantillons n'est nécessaire QUE si il y a des tissus dans la commande
+5. Utilise le tutoiement professionnel comme Adriana
+6. Le format doit être identique au template, prêt à copier/coller directement
+
+Génère maintenant l'email complet :`
 
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -275,7 +304,7 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
               role: 'user',
               content: prompt
             }],
-            temperature: 0.7,
+            temperature: 0.5,
           }),
         })
 
@@ -283,34 +312,19 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
           const data = await response.json()
           let generatedEmail = data.choices[0].message.content
 
-          // Clean up any markdown code blocks if present
-          generatedEmail = generatedEmail.replace(/```html\n?/g, '').replace(/```\n?/g, '')
+          // Clean up any markdown artifacts if present
+          generatedEmail = generatedEmail.replace(/```[a-z]*\n?/g, '').replace(/```\n?/g, '').trim()
 
-          // Add photos to email if available - BEFORE closing </body> tag
-          if (photos.length > 0) {
-            const photosHtml = `
-              <div style="margin: 30px 0; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;">📸 Photos de la commande (${photos.length})</h3>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                  ${photoUrls.map(url => `
-                    <img src="${url}" alt="Photo commande" style="width: 100%; max-width: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
-                  `).join('')}
-                </div>
-              </div>
-            `
+          // Wrap in simple HTML for display in modal (preserving line breaks)
+          const htmlEmail = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.8; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-wrap;">
+${generatedEmail}
+</body>
+</html>`
 
-            // Insert photos BEFORE </body> tag, or before closing </table> if no </body>
-            if (generatedEmail.includes('</body>')) {
-              generatedEmail = generatedEmail.replace('</body>', `${photosHtml}</body>`)
-            } else if (generatedEmail.includes('</table>')) {
-              generatedEmail = generatedEmail.replace(/<\/table>(\s*)<\/html>/i, `</table>${photosHtml}$1</html>`)
-            } else {
-              // Fallback: append before </html>
-              generatedEmail = generatedEmail.replace('</html>', `${photosHtml}</html>`)
-            }
-          }
-
-          setEmailContent(generatedEmail)
+          setEmailContent(htmlEmail)
           setShowEmailModal(true)
           return
         }
@@ -322,90 +336,45 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
     } catch (error: any) {
       console.error('Error generating email:', error)
 
-      // Professional fallback template
-      const statusMap: Record<string, string> = {
-        en_attente: 'en attente de traitement',
-        confirmee: 'confirmée',
-        en_preparation: 'en cours de préparation',
-        envoyee: 'envoyée'
-      }
+      // Get the first magasin for personalized greeting
+      const firstMagasin = commande.commande_magasins[0]?.magasins
+      const magasinCode = firstMagasin?.code || 'XXXXX'
 
-      const photoUrls = photos.map(photo =>
-        supabase.storage.from('order-photos').getPublicUrl(photo.file_path).data.publicUrl
-      )
+      // Build product list
+      const produitsListe = commande.commande_produits.map((cp: any) => {
+        let totalQty = 0
+        commande.commande_magasins.forEach((cm: any) => {
+          const specificQty = commande.commande_magasin_produits?.find(
+            (cmp: any) => cmp.magasin_id === cm.magasin_id && cmp.produit_id === cp.produit_id
+          )
+          totalQty += specificQty?.quantite || cp.quantite
+        })
+        return `${totalQty} x ${cp.produits.nom}`
+      }).join('\n')
 
-      const fallbackEmail = `
-<!DOCTYPE html>
+      // Fallback text-based template (Adriana style)
+      const fallbackEmail = `<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #ff3366 0%, #ff7b3d 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">Mise à jour de votre commande</h1>
-  </div>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.8; color: #374151; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-wrap;">
+Bonjour,
 
-  <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-    <p style="margin: 0 0 10px 0;"><strong>Numéro de commande :</strong> #${commande.id.slice(0, 8)}</p>
-    <p style="margin: 0;"><strong>Statut :</strong> <span style="background: #dcfce7; padding: 4px 12px; border-radius: 12px; color: #166534; font-weight: 600;">${statusMap[commande.statut] || commande.statut}</span></p>
-  </div>
+Nous avons déposé une enveloppe à ton attention dans le box ${magasinCode} qui partira prochainement de quai30.
 
-  <p>Bonjour,</p>
-  <p>Nous vous informons que votre commande est actuellement <strong>${statusMap[commande.statut] || commande.statut}</strong>.</p>
+Elle contient votre commande :
+${produitsListe}
 
-  <h3 style="color: #1f2937; margin-top: 30px;">📍 Magasins concernés (${commande.commande_magasins.length})</h3>
-  <div style="background: #f9fafb; padding: 15px; border-radius: 8px;">
-    ${commande.commande_magasins.map((cm: any) => `
-      <div style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #ff3366;">
-        <strong>${cm.magasins.nom}</strong><br>
-        <span style="color: #6b7280; font-size: 14px;">${cm.magasins.ville} • ${cm.magasins.code}</span>
-      </div>
-    `).join('')}
-  </div>
+Pourrais-tu revenir vers moi lorsque vous les aurez reçu ?
 
-  <h3 style="color: #1f2937; margin-top: 30px;">📦 Produits commandés (${commande.commande_produits.length})</h3>
-  <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 8px; overflow: hidden;">
-    <thead>
-      <tr style="background: #e5e7eb;">
-        <th style="padding: 12px; text-align: left; font-size: 14px;">Produit</th>
-        <th style="padding: 12px; text-align: left; font-size: 14px;">Référence</th>
-        <th style="padding: 12px; text-align: center; font-size: 14px;">Quantité</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${commande.commande_produits.map((cp: any) => `
-        <tr style="border-top: 1px solid #e5e7eb;">
-          <td style="padding: 12px; font-weight: 600;">${cp.produits.nom}</td>
-          <td style="padding: 12px; color: #6b7280; font-family: monospace;">${cp.produits.reference}</td>
-          <td style="padding: 12px; text-align: center;"><span style="background: linear-gradient(135deg, #ff3366 0%, #ff7b3d 100%); color: white; padding: 4px 12px; border-radius: 6px; font-weight: bold;">${cp.quantite}</span></td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
+Merci d'avance.
 
-  ${photos.length > 0 ? `
-    <h3 style="color: #1f2937; margin-top: 30px;">📸 Photos de la commande (${photos.length})</h3>
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px;">
-      ${photoUrls.map(url => `
-        <img src="${url}" alt="Photo commande" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
-      `).join('')}
-    </div>
-  ` : ''}
 
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
-    <p>Pour toute question concernant votre commande, n'hésitez pas à nous contacter.</p>
-    <p style="margin-top: 30px;">
-      Cordialement,<br>
-      <strong style="background: linear-gradient(135deg, #ff3366 0%, #ff7b3d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 18px;">L'équipe Phenix Log</strong>
-    </p>
-  </div>
+Cordialement,
 
-  <div style="margin-top: 30px; padding: 15px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center;">
-    <p style="margin: 0;">Cet email a été généré automatiquement. Merci de ne pas y répondre directement.</p>
-  </div>
+Adriana SALGADO
+PHENIX LOG
 </body>
-</html>
-      `
+</html>`
       setEmailContent(fallbackEmail)
       setShowEmailModal(true)
     } finally {
