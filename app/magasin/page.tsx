@@ -3,15 +3,49 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser, getUserProfile, supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { CategorySidebar } from '@/components/ui/CategorySidebar'
+import { CompactProductCard } from '@/components/ui/CompactProductCard'
+import { Pagination } from '@/components/ui/Pagination'
+import {
+  Plus,
+  Search,
+  History as HistoryIcon,
+  LayoutGrid,
+  CheckCircle2,
+  Package,
+  TrendingUp,
+  Clock,
+  AlertCircle,
+  X
+} from 'lucide-react'
 import type { User, Produit } from '@/types/database.types'
 
+interface ProduitWithFilters extends Produit {
+  categorie?: string
+  modele_id?: string
+  actif?: boolean
+}
+
+interface UserWithMagasin extends User {
+  magasins?: any
+}
+
 interface CartItem {
-  produit: Produit
+  produit: ProduitWithFilters
   quantite: number
 }
+
+const CATEGORIES = [
+  { id: 'consommable', label: 'Consommable', icon: '📦', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  { id: 'echantillon_lri', label: 'Échantillon LRI', icon: '🏷️', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  { id: 'echantillon_ampm', label: 'Échantillon AM.PM', icon: '🌙', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+  { id: 'pentes', label: 'Pentes', icon: '📐', color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  { id: 'tissus', label: 'Tissus', icon: '🧵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
+]
 
 function HistoriqueCommandes({ userId, magasinId }: { userId: string; magasinId: string }) {
   const [commandes, setCommandes] = useState<any[]>([])
@@ -21,7 +55,7 @@ function HistoriqueCommandes({ userId, magasinId }: { userId: string; magasinId:
   useEffect(() => {
     async function fetchCommandes() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('commande_magasins')
           .select(`
             commande_id,
@@ -43,7 +77,7 @@ function HistoriqueCommandes({ userId, magasinId }: { userId: string; magasinId:
 
         if (error) throw error
 
-        const commandesData = data?.map(cm => cm.commandes).filter(Boolean) || []
+        const commandesData = data?.map((cm: any) => cm.commandes).filter(Boolean) || []
         setCommandes(commandesData as any)
       } catch (error) {
         console.error('Error fetching commandes:', error)
@@ -58,8 +92,8 @@ function HistoriqueCommandes({ userId, magasinId }: { userId: string; magasinId:
   function getStatusBadge(statut: string) {
     const statusConfig: Record<string, string> = {
       en_attente: 'En attente',
-      en_preparation: 'En préparation',
       confirmee: 'Confirmée',
+      en_preparation: 'En préparation',
       envoyee: 'Envoyée',
     }
 
@@ -343,13 +377,19 @@ function HistoriqueCommandes({ userId, magasinId }: { userId: string; magasinId:
 
 export default function MagasinPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [produits, setProduits] = useState<Produit[]>([])
+  const [user, setUser] = useState<UserWithMagasin | null>(null)
+  const [produits, setProduits] = useState<ProduitWithFilters[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [view, setView] = useState<'order' | 'history'>('order')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [modeles, setModeles] = useState<any[]>([])
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [modelSearchQuery, setModelSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   useEffect(() => {
     async function loadData() {
@@ -360,7 +400,7 @@ export default function MagasinPage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = (await getUserProfile(currentUser.id)) as any
 
         if (profile.role !== 'magasin') {
           router.push('/dashboard')
@@ -369,12 +409,20 @@ export default function MagasinPage() {
 
         setUser(profile)
 
-        const { data: produitsData } = await supabase
-          .from('produits')
-          .select('*')
-          .order('nom')
+        // Charger les produits et les modèles
+        const [produitsRes, modelesRes] = await Promise.all([
+          supabase.from('produits').select('*').order('nom'),
+          supabase.from('modeles').select('*').order('nom')
+        ])
 
-        setProduits(produitsData || [])
+        // Filtrer les produits pour ne garder que ceux qui sont actifs
+        const activeProduits = (produitsRes.data || []).map((p: any) => ({
+          ...p,
+          actif: p.actif !== false
+        })).filter((p: any) => p.actif)
+
+        setProduits(activeProduits)
+        setModeles(modelesRes.data || [])
       } catch (error) {
         console.error('Error loading data:', error)
         router.push('/login')
@@ -386,363 +434,204 @@ export default function MagasinPage() {
     loadData()
   }, [router])
 
-  function updateQuantite(produit: Produit, quantite: number) {
-    if (quantite === 0) {
-      setCart(prev => prev.filter(item => item.produit.id !== produit.id))
-    } else {
-      setCart(prev => {
-        const existing = prev.find(item => item.produit.id === produit.id)
-        if (existing) {
-          return prev.map(item =>
-            item.produit.id === produit.id ? { ...item, quantite } : item
-          )
-        }
-        return [...prev, { produit, quantite }]
-      })
-    }
-  }
+  const filteredProduits = produits.filter(p => {
+    const matchesCategory = !selectedCategory || p.categorie === selectedCategory
+    const matchesModel = !selectedCategory || selectedCategory !== 'echantillon_lri' || !selectedModel || p.modele_id === selectedModel
+    const matchesSearch = !searchQuery ||
+      p.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.reference.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesModel && matchesSearch
+  })
 
-  function getQuantite(produitId: string): number {
-    return cart.find(item => item.produit.id === produitId)?.quantite || 0
-  }
+  const totalPages = Math.ceil(filteredProduits.length / itemsPerPage)
+  const paginatedProduits = filteredProduits.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
-  async function handleSubmit() {
-    if (cart.length === 0) {
-      alert('Veuillez ajouter au moins un produit au panier')
-      return
-    }
-
-    if (!user?.magasin_id) {
-      alert('Erreur: Magasin non trouvé')
-      return
-    }
-
-    setSubmitting(true)
-
-    try {
-      const { data: commande, error: commandeError } = await supabase
-        .from('commandes')
-        .insert({
-          user_id: user.id,
-          statut: 'en_attente',
-        })
-        .select()
-        .single()
-
-      if (commandeError) throw commandeError
-
-      const { error: magasinError } = await supabase
-        .from('commande_magasins')
-        .insert({
-          commande_id: commande.id,
-          magasin_id: user.magasin_id,
-        })
-
-      if (magasinError) throw magasinError
-
-      const { error: produitsError } = await supabase
-        .from('commande_produits')
-        .insert(
-          cart.map(item => ({
-            commande_id: commande.id,
-            produit_id: item.produit.id,
-            quantite: item.quantite,
-          }))
-        )
-
-      if (produitsError) throw produitsError
-
-      alert('Commande créée avec succès !')
-
-      setCart([])
-      setView('history')
-    } catch (error: any) {
-      console.error('Error creating order:', error)
-      alert('Erreur lors de la création de la commande: ' + error.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  const filteredModeles = modeles.filter(m =>
+    m.nom.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  )
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen gradient-mesh flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 mb-6 shadow-xl shadow-primary-500/20 animate-float">
-            <div className="animate-spin rounded-full h-10 w-10 border-3 border-white border-t-transparent"></div>
-          </div>
-          <p className="text-stone-600 font-medium text-lg">Chargement de votre espace...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-stone-900"></div>
       </div>
     )
   }
 
   return (
-    <DashboardLayout user={user} title={`Magasin ${user.magasins?.nom || ''}`}>
-      <div className="space-y-6 animate-fadeIn">
-        {/* Navigation Premium */}
-        <Card variant="elevated">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <button
-                onClick={() => setView('order')}
-                className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                  view === 'order'
-                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nouvelle commande
-              </button>
-              <button
-                onClick={() => setView('history')}
-                className={`flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                  view === 'history'
-                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Historique
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+    <DashboardLayout user={user as any} title="Magasin">
+      <div className="space-y-8">
+        {/* Navigation Rapide */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-stone-200 shadow-sm">
+          <div className="flex items-center gap-2 p-1 bg-stone-100 rounded-xl">
+            <button
+              onClick={() => setView('order')}
+              className={cn(
+                "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                view === 'order' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+              )}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Catalogue
+            </button>
+            <button
+              onClick={() => setView('history')}
+              className={cn(
+                "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                view === 'history' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+              )}
+            >
+              <HistoryIcon className="w-4 h-4" />
+              Historique
+            </button>
+          </div>
+
+          <Button
+            onClick={() => router.push('/magasin/commande')}
+            className="w-full md:w-auto bg-stone-900 text-white rounded-xl py-6 flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Nouvelle Commande
+          </Button>
+        </div>
 
         {view === 'order' ? (
-          <>
-            {/* Info magasin Premium */}
-            {user.magasins && (
-              <div className="relative p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 overflow-hidden animate-slideUp">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-300/30 to-indigo-300/30 rounded-full blur-3xl"></div>
-                <div className="relative flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white shadow-lg">
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Commande pour</p>
-                    <p className="text-lg font-bold text-blue-900">
-                      {user.magasins.nom}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      {user.magasins.ville} • <span className="font-mono font-semibold">{user.magasins.code}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Catalogue produits Premium */}
-            <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '100ms' }}>
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  </div>
-                  Catalogue produits
-                </CardTitle>
-                <p className="text-sm text-stone-500 ml-13 mt-1">{produits.length} produits disponibles</p>
-              </CardHeader>
-              <CardContent>
-                {/* Search bar */}
-                <div className="mb-6">
-                  <div className="relative">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="border-b border-stone-100 bg-stone-50/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-stone-500" />
+                    Catalogue Produits
+                  </CardTitle>
+                  <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                     <input
                       type="text"
-                      placeholder="Rechercher par référence ou nom..."
+                      placeholder="Référence ou nom..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-4 py-3 pl-12 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value)
+                        setCurrentPage(1)
+                      }}
+                      className="w-full pl-10 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10"
                     />
-                    <svg className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {produits
-                    .filter(produit => {
-                      if (!searchQuery) return true
-                      const query = searchQuery.toLowerCase()
-                      return produit.nom.toLowerCase().includes(query) ||
-                             produit.reference.toLowerCase().includes(query)
-                    })
-                    .map(produit => {
-                    const quantite = getQuantite(produit.id)
-                    const isInCart = quantite > 0
-
-                    return (
-                      <div
-                        key={produit.id}
-                        className={`group relative rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
-                          isInCart
-                            ? 'border-primary-400 shadow-lg shadow-primary-500/20'
-                            : 'border-stone-200 hover:border-primary-300 hover:shadow-md'
-                        }`}
-                      >
-                        <div className="relative h-56 overflow-hidden bg-stone-100">
-                          <img
-                            src={produit.image_url || 'https://via.placeholder.com/300'}
-                            alt={produit.nom}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                          {isInCart && (
-                            <div className="absolute top-3 right-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold shadow-lg animate-scaleIn">
-                                {quantite}
-                              </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        </div>
-
-                        <div className="p-5 space-y-3">
-                          <div>
-                            <h3 className="font-semibold text-stone-900 text-lg mb-1">{produit.nom}</h3>
-                            <p className="text-xs font-mono text-stone-500 bg-stone-100 px-2 py-1 rounded inline-block">
-                              {produit.reference}
-                            </p>
-                          </div>
-
-                          {produit.description && (
-                            <p className="text-sm text-stone-600 line-clamp-2">{produit.description}</p>
-                          )}
-
-                          <div className="flex items-center gap-2 pt-2">
-                            <button
-                              onClick={() => updateQuantite(produit, Math.max(0, quantite - 1))}
-                              disabled={quantite === 0}
-                              className="w-10 h-10 rounded-xl bg-stone-100 hover:bg-gradient-to-br hover:from-red-400 hover:to-red-500 hover:text-white text-stone-700 font-bold disabled:opacity-30 disabled:hover:bg-stone-100 disabled:hover:text-stone-700 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" />
-                              </svg>
-                            </button>
-
-                            <input
-                              type="number"
-                              min="0"
-                              value={quantite}
-                              onChange={(e) => updateQuantite(produit, parseInt(e.target.value) || 0)}
-                              className="flex-1 text-center border-2 border-stone-200 focus:border-primary-400 rounded-xl px-3 py-2 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
-                            />
-
-                            <button
-                              onClick={() => updateQuantite(produit, quantite + 1)}
-                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-bold transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Panier Premium */}
-            <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '200ms' }}>
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  Récapitulatif
-                </CardTitle>
-                {cart.length > 0 && (
-                  <p className="text-sm text-stone-500 ml-13 mt-1">
-                    {cart.length} article{cart.length > 1 ? 's' : ''} dans votre panier
-                  </p>
-                )}
               </CardHeader>
-              <CardContent>
-                {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-stone-100 to-stone-200 mb-4">
-                      <svg className="w-10 h-10 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                      </svg>
+              <CardContent className="p-6">
+                {/* Sélecteur de catégorie (Ancien style) */}
+                <div className="flex flex-wrap gap-2 mb-8">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory(null)
+                      setSelectedModel(null)
+                      setCurrentPage(1)
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all",
+                      !selectedCategory
+                        ? "bg-stone-900 text-white border-stone-900"
+                        : "bg-white text-stone-600 border-stone-100 hover:border-stone-200"
+                    )}
+                  >
+                    🚀 Tous les produits
+                  </button>
+                  {CATEGORIES.map((cat: any) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedCategory(cat.id)
+                        setSelectedModel(null)
+                        setCurrentPage(1)
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all",
+                        selectedCategory === cat.id
+                          ? cat.color
+                          : "bg-white text-stone-600 border-stone-100 hover:border-stone-200"
+                      )}
+                    >
+                      <span>{cat.icon}</span>
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Modèles (Si LRI) */}
+                {selectedCategory === 'echantillon_lri' && (
+                  <div className="mb-8 p-6 bg-purple-50 rounded-2xl border border-purple-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-purple-900 uppercase tracking-widest">Filtrer par Modèle</h3>
+                      {selectedModel && (
+                        <button onClick={() => setSelectedModel(null)} className="text-xs font-bold text-purple-500 hover:underline">Effacer</button>
+                      )}
                     </div>
-                    <h3 className="text-lg font-semibold text-stone-900 mb-2">Votre panier est vide</h3>
-                    <p className="text-stone-500">Ajoutez des produits pour créer votre commande</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      {cart.map(item => (
-                        <div
-                          key={item.produit.id}
-                          className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-br from-stone-50 to-stone-100 border border-stone-200 hover:border-primary-300 hover:shadow-md transition-all duration-200"
+                    <div className="flex flex-wrap gap-2">
+                      {modeles.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setSelectedModel(selectedModel === m.id ? null : m.id)
+                            setCurrentPage(1)
+                          }}
+                          className={cn(
+                            "px-4 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                            selectedModel === m.id
+                              ? "bg-purple-600 text-white border-purple-600"
+                              : "bg-white text-purple-600 border-purple-200 hover:bg-purple-100"
+                          )}
                         >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                              {item.produit.nom.charAt(0)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-stone-900 truncate">{item.produit.nom}</p>
-                              <p className="text-xs font-mono text-stone-500">{item.produit.reference}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center justify-center min-w-[3rem] px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold shadow-md">
-                              × {item.quantite}
-                            </span>
-                            <button
-                              onClick={() => updateQuantite(item.produit, 0)}
-                              className="w-9 h-9 rounded-lg bg-red-100 hover:bg-gradient-to-br hover:from-red-400 hover:to-red-500 text-red-600 hover:text-white transition-all duration-200 flex items-center justify-center"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
+                          {m.nom}
+                        </button>
                       ))}
                     </div>
-
-                    <div className="pt-4 border-t border-stone-200">
-                      <Button
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        isLoading={submitting}
-                        fullWidth
-                        size="lg"
-                        className="gradient-rose text-white shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-300"
-                      >
-                        {submitting ? 'Envoi en cours...' : 'Valider la commande'}
-                      </Button>
-                    </div>
                   </div>
                 )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {paginatedProduits.map((produit) => (
+                    <div
+                      key={produit.id}
+                      className="group flex flex-col bg-white border border-stone-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all"
+                    >
+                      <div className="aspect-[4/3] bg-stone-100 relative">
+                        <img
+                          src={produit.image_url || 'https://via.placeholder.com/400x300'}
+                          alt={produit.nom}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-3 left-3">
+                          <span className="px-2 py-1 bg-white/90 backdrop-blur rounded-lg text-[10px] font-black uppercase tracking-widest text-stone-600 shadow-sm border border-stone-100">
+                            {produit.categorie?.replace('_', ' ') || 'Produit'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <h4 className="font-bold text-stone-900 text-sm line-clamp-1">{produit.nom}</h4>
+                        <p className="text-xs font-mono text-stone-500 mt-1">{produit.reference}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {paginatedProduits.length === 0 && (
+                    <div className="col-span-full py-20 text-center bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200">
+                      <p className="text-stone-400 font-bold">Aucun produit trouvé</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination */}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
               </CardContent>
             </Card>
-          </>
+          </div>
         ) : (
           <HistoriqueCommandes userId={user.id} magasinId={user.magasin_id || ''} />
         )}

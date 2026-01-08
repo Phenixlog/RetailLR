@@ -78,7 +78,7 @@ export default function AdminPage() {
   const stats = [
     {
       label: 'Total commandes',
-      value: commandes.length,
+      value: (commandes as any[]).length,
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -87,7 +87,7 @@ export default function AdminPage() {
     },
     {
       label: 'En attente',
-      value: commandes.filter(c => c.statut === 'en_attente').length,
+      value: (commandes as any[]).filter(c => c.statut === 'en_attente').length,
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -95,8 +95,17 @@ export default function AdminPage() {
       ),
     },
     {
+      label: 'Confirmées',
+      value: (commandes as any[]).filter(c => c.statut === 'confirmee').length,
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
       label: 'En préparation',
-      value: commandes.filter(c => c.statut === 'en_preparation').length,
+      value: (commandes as any[]).filter(c => c.statut === 'en_preparation').length,
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -104,11 +113,11 @@ export default function AdminPage() {
       ),
     },
     {
-      label: 'Terminées',
-      value: commandes.filter(c => c.statut === 'confirmee' || c.statut === 'envoyee').length,
+      label: 'Envoyées',
+      value: (commandes as any[]).filter(c => c.statut === 'envoyee').length,
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     },
@@ -152,43 +161,48 @@ export default function AdminPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  filter === 'all'
-                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${filter === 'all'
+                  ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
               >
                 Toutes <span className="ml-1.5 font-bold">({commandes.length})</span>
               </button>
               <button
                 onClick={() => setFilter('en_attente')}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  filter === 'en_attente'
-                    ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-lg shadow-yellow-500/30'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${filter === 'en_attente'
+                  ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white shadow-lg shadow-yellow-500/30'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
               >
-                En attente <span className="ml-1.5 font-bold">({commandes.filter(c => c.statut === 'en_attente').length})</span>
-              </button>
-              <button
-                onClick={() => setFilter('en_preparation')}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  filter === 'en_preparation'
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                En préparation <span className="ml-1.5 font-bold">({commandes.filter(c => c.statut === 'en_preparation').length})</span>
+                En attente <span className="ml-1.5 font-bold">({(commandes as any[]).filter(c => c.statut === 'en_attente').length})</span>
               </button>
               <button
                 onClick={() => setFilter('confirmee')}
-                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  filter === 'confirmee'
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${filter === 'confirmee'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
               >
-                Confirmées <span className="ml-1.5 font-bold">({commandes.filter(c => c.statut === 'confirmee').length})</span>
+                Confirmées <span className="ml-1.5 font-bold">({(commandes as any[]).filter(c => c.statut === 'confirmee').length})</span>
+              </button>
+              <button
+                onClick={() => setFilter('en_preparation')}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${filter === 'en_preparation'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+              >
+                En préparation <span className="ml-1.5 font-bold">({(commandes as any[]).filter(c => c.statut === 'en_preparation').length})</span>
+              </button>
+              <button
+                onClick={() => setFilter('envoyee')}
+                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${filter === 'envoyee'
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+              >
+                Envoyées <span className="ml-1.5 font-bold">({(commandes as any[]).filter(c => c.statut === 'envoyee').length})</span>
               </button>
             </div>
           </CardContent>

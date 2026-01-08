@@ -70,9 +70,8 @@ export default function DashboardLayout({ children, user, title }: DashboardLayo
 
       {/* Sidebar - Premium */}
       <aside
-        className={`fixed top-0 left-0 h-full w-72 glass border-r border-stone-200 z-50 transform transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 animate-slideInFromLeft`}
+        className={`fixed top-0 left-0 h-full w-72 glass border-r border-stone-200 z-50 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } lg:translate-x-0 animate-slideInFromLeft`}
       >
         <div className="flex flex-col h-full">
           {/* Logo & Brand */}
@@ -168,6 +167,30 @@ export default function DashboardLayout({ children, user, title }: DashboardLayo
                   </div>
                   <span className="font-medium text-sm">Suivi Emails</span>
                 </button>
+
+                <button
+                  onClick={() => router.push('/admin/catalogue')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-700 hover:bg-stone-100 transition-all duration-200 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-stone-100 group-hover:bg-stone-200 flex items-center justify-center text-stone-600 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                  </div>
+                  <span className="font-medium text-sm">Gestion Catalogue</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/admin/tableur')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-700 hover:bg-stone-100 transition-all duration-200 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-green-100 group-hover:bg-green-200 flex items-center justify-center text-green-600 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium text-sm">Tableur</span>
+                </button>
               </>
             )}
 
@@ -220,6 +243,18 @@ export default function DashboardLayout({ children, user, title }: DashboardLayo
                   </div>
                   <span className="font-medium text-sm">Historique</span>
                 </button>
+
+                <button
+                  onClick={() => router.push('/client/tableur')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-700 hover:bg-stone-100 transition-all duration-200 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-green-100 group-hover:bg-green-200 flex items-center justify-center text-green-600 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium text-sm">Tableur</span>
+                </button>
               </>
             )}
 
@@ -259,6 +294,18 @@ export default function DashboardLayout({ children, user, title }: DashboardLayo
                     </svg>
                   </div>
                   <span className="font-medium text-sm">Historique</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/magasin/tableur')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-700 hover:bg-stone-100 transition-all duration-200 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-green-100 group-hover:bg-green-200 flex items-center justify-center text-green-600 transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium text-sm">Tableur</span>
                 </button>
               </>
             )}
@@ -354,7 +401,7 @@ export default function DashboardLayout({ children, user, title }: DashboardLayo
           <div className="px-4 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
               <p className="text-sm text-stone-500">
-                © 2024 La Redoute × Phenix Log
+                © 2026 La Redoute × Phenix Log
               </p>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold shadow-sm">

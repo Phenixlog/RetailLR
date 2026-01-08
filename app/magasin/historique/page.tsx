@@ -11,8 +11,8 @@ import type { User } from '@/types/database.types'
 function getStatusBadge(statut: string) {
   const statusConfig: Record<string, string> = {
     en_attente: 'En attente',
-    en_preparation: 'En préparation',
     confirmee: 'Confirmée',
+    en_preparation: 'En préparation',
     envoyee: 'Envoyée',
   }
 

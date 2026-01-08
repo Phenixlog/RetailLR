@@ -126,8 +126,8 @@ export default function StatistiquesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: 'En attente', value: stats.statsByStatus.en_attente, color: 'from-amber-400 to-amber-600' },
-            { label: 'En préparation', value: stats.statsByStatus.en_preparation, color: 'from-blue-400 to-blue-600' },
             { label: 'Confirmées', value: stats.statsByStatus.confirmee, color: 'from-green-400 to-green-600' },
+            { label: 'En préparation', value: stats.statsByStatus.en_preparation, color: 'from-blue-400 to-blue-600' },
             { label: 'Envoyées', value: stats.statsByStatus.envoyee, color: 'from-purple-400 to-purple-600' },
           ].map((item, idx) => (
             <Card key={item.label} variant="elevated" className="animate-slideUp" style={{ animationDelay: `${idx * 50}ms` }}>

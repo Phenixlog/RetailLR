@@ -186,8 +186,8 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 {[
                   { label: 'En attente', value: stats.enAttente },
-                  { label: 'En préparation', value: stats.enPreparation },
                   { label: 'Confirmées', value: stats.confirmees },
+                  { label: 'En préparation', value: stats.enPreparation },
                   { label: 'Envoyées', value: stats.envoyees },
                 ].map(item => (
                   <div key={item.label}>

@@ -17,7 +17,8 @@
   - Row Level Security (RLS)
   
 ### IA & Automation
-- **LLM Local :** Ollama (modèle : llama3 ou mistral)
+- **API IA :** OpenRouter (GPT-4o) - Méthode prioritaire
+- **LLM Local (Optionnel) :** Ollama (modèle : llama3 ou mistral)
 - **Orchestration :** n8n (self-hosted ou cloud)
 - **Email :** SMTP via n8n (Gmail, SendGrid, ou Brevo)
 
@@ -81,7 +82,10 @@ SUPABASE_SERVICE_ROLE_KEY=eyJxxx... (backend only)
 # n8n webhook
 N8N_WEBHOOK_URL=https://your-n8n.com/webhook/send-email
 
-# Ollama (si API externe)
+# OpenRouter API Key
+NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-...
+
+# Ollama (Optionnel)
 OLLAMA_API_URL=http://localhost:11434
 ```
 

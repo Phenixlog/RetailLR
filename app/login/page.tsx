@@ -24,7 +24,7 @@ export default function LoginPage() {
       if (!user) throw new Error('User not found')
 
       const { supabase } = await import('@/lib/supabase')
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('users')
         .select('role')
         .eq('id', user.id)
@@ -34,7 +34,9 @@ export default function LoginPage() {
 
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      switch (profile.role) {
+      const role = (profile as any)?.role
+
+      switch (role) {
         case 'admin':
           window.location.href = '/admin'
           break
@@ -155,16 +157,15 @@ export default function LoginPage() {
             {/* Demo Accounts */}
             <div className="space-y-2">
               {[
-                { role: 'Admin', email: 'adriana@phenixlog.com', color: 'from-red-500 to-pink-500' },
-                { role: 'Client', email: 'commandes@laredoute.fr', color: 'from-blue-500 to-cyan-500' },
-                { role: 'Magasin', email: 'paris@laredoute.fr', color: 'from-green-500 to-emerald-500' },
+                { role: 'Magasin', email: 'lrmagasin@phenixlog.fr', color: 'from-green-500 to-emerald-500' },
+                { role: 'Client', email: 'lrtest@phenixlog.fr', color: 'from-blue-500 to-cyan-500' },
               ].map((account) => (
                 <button
                   key={account.email}
                   type="button"
                   onClick={() => {
                     setEmail(account.email)
-                    setPassword('test123')
+                    setPassword('123456')
                   }}
                   className="w-full p-3 rounded-xl bg-stone-50 hover:bg-stone-100 transition-all duration-200 group border border-stone-200 hover:border-primary-300"
                 >
@@ -187,13 +188,13 @@ export default function LoginPage() {
             </div>
 
             <p className="text-xs text-center text-stone-500 mt-6">
-              Mot de passe par défaut : <code className="px-2 py-1 bg-stone-100 rounded font-mono text-primary-600">test123</code>
+              Mot de passe par défaut : <code className="px-2 py-1 bg-stone-100 rounded font-mono text-primary-600">123456</code>
             </p>
           </div>
 
           {/* Footer */}
           <p className="text-center mt-8 text-sm text-stone-600 animate-fadeIn" style={{ animationDelay: '200ms' }}>
-            © 2024 La Redoute × Phenix Log
+            © 2026 La Redoute × Phenix Log
           </p>
         </div>
       </div>

@@ -9,8 +9,8 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, showDot = false }: StatusBadgeProps) {
   const statusConfig: Record<string, { label: string; variant: any }> = {
     en_attente: { label: 'En attente', variant: 'warning' },
-    en_preparation: { label: 'En préparation', variant: 'secondary' },
     confirmee: { label: 'Confirmée', variant: 'success' },
+    en_preparation: { label: 'En préparation', variant: 'secondary' },
     envoyee: { label: 'Envoyée', variant: 'purple' },
   }
 

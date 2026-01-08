@@ -54,11 +54,18 @@ export default function AdminOrderDetailPage() {
             id, statut, created_at, user_id,
             users!commandes_user_id_fkey (email, role),
             commande_magasins (
-              magasins (nom, code, ville)
+              magasin_id,
+              magasins (id, nom, code, ville)
             ),
             commande_produits (
               quantite,
-              produits (nom, reference, description)
+              produit_id,
+              produits (id, nom, reference, description)
+            ),
+            commande_magasin_produits (
+              magasin_id,
+              produit_id,
+              quantite
             )
           `)
           .eq('id', orderId)
@@ -209,8 +216,8 @@ export default function AdminOrderDetailPage() {
       // Map status to French
       const statusMap: Record<string, string> = {
         en_attente: 'en attente de traitement',
-        en_preparation: 'en cours de préparation',
         confirmee: 'confirmée',
+        en_preparation: 'en cours de préparation',
         envoyee: 'envoyée'
       }
 
@@ -318,8 +325,8 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
       // Professional fallback template
       const statusMap: Record<string, string> = {
         en_attente: 'en attente de traitement',
-        en_preparation: 'en cours de préparation',
         confirmee: 'confirmée',
+        en_preparation: 'en cours de préparation',
         envoyee: 'envoyée'
       }
 
@@ -508,15 +515,13 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
       {/* Custom Notification Toast */}
       {showSuccessNotif && (
         <div className="fixed top-4 right-4 z-50 animate-slideDown">
-          <div className={`rounded-xl shadow-2xl p-4 min-w-[320px] max-w-md border-2 ${
-            notifType === 'success'
-              ? 'bg-green-50 border-green-500'
-              : 'bg-red-50 border-red-500'
-          }`}>
+          <div className={`rounded-xl shadow-2xl p-4 min-w-[320px] max-w-md border-2 ${notifType === 'success'
+            ? 'bg-green-50 border-green-500'
+            : 'bg-red-50 border-red-500'
+            }`}>
             <div className="flex items-start gap-3">
-              <div className={`p-2 rounded-lg ${
-                notifType === 'success' ? 'bg-green-100' : 'bg-red-100'
-              }`}>
+              <div className={`p-2 rounded-lg ${notifType === 'success' ? 'bg-green-100' : 'bg-red-100'
+                }`}>
                 {notifType === 'success' ? (
                   <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -528,19 +533,17 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                 )}
               </div>
               <div className="flex-1">
-                <p className={`text-sm font-semibold whitespace-pre-line ${
-                  notifType === 'success' ? 'text-green-900' : 'text-red-900'
-                }`}>
+                <p className={`text-sm font-semibold whitespace-pre-line ${notifType === 'success' ? 'text-green-900' : 'text-red-900'
+                  }`}>
                   {successMessage}
                 </p>
               </div>
               <button
                 onClick={() => setShowSuccessNotif(false)}
-                className={`p-1 rounded-lg transition-colors ${
-                  notifType === 'success'
-                    ? 'hover:bg-green-100 text-green-600'
-                    : 'hover:bg-red-100 text-red-600'
-                }`}
+                className={`p-1 rounded-lg transition-colors ${notifType === 'success'
+                  ? 'hover:bg-green-100 text-green-600'
+                  : 'hover:bg-red-100 text-red-600'
+                  }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -659,15 +662,14 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                     Modifier le statut
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {['en_attente', 'en_preparation', 'confirmee', 'envoyee'].map((status) => (
+                    {['en_attente', 'confirmee', 'en_preparation', 'envoyee'].map((status) => (
                       <button
                         key={status}
                         onClick={() => handleUpdateStatus(status)}
-                        className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 ${
-                          commande.statut === status
-                            ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30 cursor-default'
-                            : 'bg-stone-100 text-stone-700 hover:bg-stone-200 hover:shadow-md'
-                        }`}
+                        className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 ${commande.statut === status
+                          ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-lg shadow-primary-500/30 cursor-default'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200 hover:shadow-md'
+                          }`}
                       >
                         <StatusBadge status={status} />
                       </button>
@@ -678,7 +680,7 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
             </Card>
 
             {/* Magasins */}
-            <Card variant="elevated" className="animate-slideUp" style={{animationDelay: '100ms'}}>
+            <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '100ms' }}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-stone-100 rounded-lg">
@@ -693,40 +695,74 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {commande.commande_magasins.map((cm: any, idx: number) => (
-                    <div key={idx} className="group p-5 bg-stone-50 rounded-xl hover:shadow-md transition-all duration-200 border border-stone-200 hover:border-primary-300">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-lg text-stone-900 mb-1">{cm.magasins.nom}</p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="inline-flex items-center gap-1.5 text-stone-600">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                              </svg>
-                              {cm.magasins.code}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 text-stone-600">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                              {cm.magasins.ville}
-                            </span>
+                <div className="space-y-4">
+                  {commande.commande_magasins.map((cm: any, idx: number) => {
+                    // Get products for this store
+                    const storeProducts = commande.commande_produits.map((cp: any) => {
+                      const specificQty = commande.commande_magasin_produits?.find(
+                        (cmp: any) => cmp.magasin_id === cm.magasin_id && cmp.produit_id === cp.produit_id
+                      )
+                      return {
+                        ...cp,
+                        storeQuantite: specificQty?.quantite || cp.quantite
+                      }
+                    })
+                    const totalStoreQty = storeProducts.reduce((sum: number, p: any) => sum + p.storeQuantite, 0)
+
+                    return (
+                      <div key={idx} className="group p-5 bg-stone-50 rounded-xl border border-stone-200 hover:border-primary-300 transition-all duration-200">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <p className="font-semibold text-lg text-stone-900 mb-1">{cm.magasins.nom}</p>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="inline-flex items-center gap-1.5 text-stone-600">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                                </svg>
+                                {cm.magasins.code}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 text-stone-600">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {cm.magasins.ville}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            {totalStoreQty}
                           </div>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-stone-700 font-bold group-hover:bg-stone-200 transition-colors">
-                          {idx + 1}
+
+                        {/* Products for this store */}
+                        <div className="space-y-2 pt-3 border-t border-stone-200">
+                          {storeProducts.map((sp: any, pidx: number) => (
+                            <div key={pidx} className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-stone-600 font-bold text-xs">
+                                  {sp.produits.nom.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-stone-900">{sp.produits.nom}</p>
+                                  <p className="text-xs text-stone-500 font-mono">{sp.produits.reference}</p>
+                                </div>
+                              </div>
+                              <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-lg font-bold text-sm">
+                                {sp.storeQuantite}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
 
             {/* Produits */}
-            <Card variant="elevated" className="animate-slideUp" style={{animationDelay: '200ms'}}>
+            <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '200ms' }}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-stone-100 rounded-lg">
@@ -735,8 +771,19 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                     </svg>
                   </div>
                   <div>
-                    <CardTitle>Produits commandés</CardTitle>
-                    <p className="text-sm text-stone-500">{commande.commande_produits.length} produit(s)</p>
+                    <CardTitle>Produits commandés - Total</CardTitle>
+                    <p className="text-sm text-stone-500">
+                      {commande.commande_produits.reduce((sum: number, cp: any) => {
+                        // Sum quantities from all stores
+                        const totalForProduct = commande.commande_magasins.reduce((storeSum: number, cm: any) => {
+                          const specificQty = commande.commande_magasin_produits?.find(
+                            (cmp: any) => cmp.magasin_id === cm.magasin_id && cmp.produit_id === cp.produit_id
+                          )
+                          return storeSum + (specificQty?.quantite || cp.quantite)
+                        }, 0)
+                        return sum + totalForProduct
+                      }, 0)} produit(s) au total
+                    </p>
                   </div>
                 </div>
               </CardHeader>
@@ -752,31 +799,41 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                           Référence
                         </th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                          Quantité
+                          Quantité Totale
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      {commande.commande_produits.map((cp: any, idx: number) => (
-                        <tr key={idx} className="group hover:bg-stone-50 transition-all duration-200">
-                          <td className="px-4 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center text-white font-bold text-sm">
-                                {cp.produits.nom.charAt(0)}
+                      {commande.commande_produits.map((cp: any, idx: number) => {
+                        // Calculate total quantity for this product across all stores
+                        const totalQuantity = commande.commande_magasins.reduce((storeSum: number, cm: any) => {
+                          const specificQty = commande.commande_magasin_produits?.find(
+                            (cmp: any) => cmp.magasin_id === cm.magasin_id && cmp.produit_id === cp.produit_id
+                          )
+                          return storeSum + (specificQty?.quantite || cp.quantite)
+                        }, 0)
+
+                        return (
+                          <tr key={idx} className="group hover:bg-stone-50 transition-all duration-200">
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center text-white font-bold text-sm">
+                                  {cp.produits.nom.charAt(0)}
+                                </div>
+                                <span className="text-sm font-semibold text-stone-900">{cp.produits.nom}</span>
                               </div>
-                              <span className="text-sm font-semibold text-stone-900">{cp.produits.nom}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className="text-sm font-mono text-stone-600">{cp.produits.reference}</span>
-                          </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-xl font-bold text-lg shadow-md group-hover:shadow-lg transition-shadow">
-                              {cp.quantite}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-mono text-stone-600">{cp.produits.reference}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-xl font-bold text-lg shadow-md group-hover:shadow-lg transition-shadow">
+                                {totalQuantity}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -786,7 +843,7 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
 
           {/* Right Column - Photos */}
           <div className="space-y-6">
-            <Card variant="elevated" className="animate-slideUp overflow-hidden" style={{animationDelay: '300ms'}}>
+            <Card variant="elevated" className="animate-slideUp overflow-hidden" style={{ animationDelay: '300ms' }}>
               <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-primary-100 to-accent-100 rounded-full blur-3xl opacity-30 -mr-24 -mt-24" />
               <CardHeader className="relative">
                 <div className="flex items-center gap-3">
@@ -808,11 +865,10 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-                      isDragging
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-stone-300 bg-stone-50 hover:border-primary-400 hover:bg-stone-100'
-                    }`}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${isDragging
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-stone-300 bg-stone-50 hover:border-primary-400 hover:bg-stone-100'
+                      }`}
                   >
                     <input
                       type="file"
@@ -825,11 +881,10 @@ Format: HTML complet avec DOCTYPE, styles inline, optimisé pour clients email (
                     />
                     <label htmlFor="photo-upload" className="cursor-pointer">
                       <div className="flex flex-col items-center">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all ${
-                          isDragging
-                            ? 'bg-primary-100 scale-110'
-                            : 'bg-stone-200'
-                        }`}>
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all ${isDragging
+                          ? 'bg-primary-100 scale-110'
+                          : 'bg-stone-200'
+                          }`}>
                           {uploading ? (
                             <svg className="animate-spin w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

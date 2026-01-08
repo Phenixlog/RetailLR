@@ -15,6 +15,10 @@ export type Database = {
           email: string
           role: 'la_redoute' | 'magasin' | 'admin'
           magasin_id: string | null
+          prenom: string | null
+          nom: string | null
+          telephone: string | null
+          perimetre: string | null
           created_at: string
         }
         Insert: {
@@ -22,6 +26,10 @@ export type Database = {
           email: string
           role: 'la_redoute' | 'magasin' | 'admin'
           magasin_id?: string | null
+          prenom?: string | null
+          nom?: string | null
+          telephone?: string | null
+          perimetre?: string | null
           created_at?: string
         }
         Update: {
@@ -29,6 +37,10 @@ export type Database = {
           email?: string
           role?: 'la_redoute' | 'magasin' | 'admin'
           magasin_id?: string | null
+          prenom?: string | null
+          nom?: string | null
+          telephone?: string | null
+          perimetre?: string | null
           created_at?: string
         }
       }
@@ -38,6 +50,9 @@ export type Database = {
           nom: string
           code: string
           ville: string
+          adresse: string | null
+          responsable: string | null
+          directeur_regional: string | null
           created_at: string
         }
         Insert: {
@@ -45,6 +60,9 @@ export type Database = {
           nom: string
           code: string
           ville: string
+          adresse?: string | null
+          responsable?: string | null
+          directeur_regional?: string | null
           created_at?: string
         }
         Update: {
@@ -52,6 +70,9 @@ export type Database = {
           nom?: string
           code?: string
           ville?: string
+          adresse?: string | null
+          responsable?: string | null
+          directeur_regional?: string | null
           created_at?: string
         }
       }

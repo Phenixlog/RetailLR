@@ -6,21 +6,46 @@ import { getCurrentUser, getUserProfile, supabase } from '@/lib/supabase'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
+import { Pagination } from '@/components/ui/Pagination'
 import type { User, Produit } from '@/types/database.types'
 
+interface ProduitWithFilters extends Produit {
+  categorie?: string
+  modele_id?: string
+  actif?: boolean
+}
+
+interface UserWithMagasin extends User {
+  magasins?: any
+}
+
 interface CartItem {
-  produit: Produit
+  produit: ProduitWithFilters
   quantite: number
 }
 
+const CATEGORIES = [
+  { id: 'consommable', label: 'Consommable', icon: '📦', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  { id: 'echantillon_lri', label: 'Échantillon LRI', icon: '🏷️', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  { id: 'echantillon_ampm', label: 'Échantillon AM.PM', icon: '🌙', color: 'bg-indigo-100 text-indigo-700 border-indigo-300' },
+  { id: 'pentes', label: 'Pentes', icon: '📐', color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  { id: 'tissus', label: 'Tissus', icon: '🧵', color: 'bg-pink-100 text-pink-700 border-pink-300' },
+]
+
 export default function MagasinCommandePage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [produits, setProduits] = useState<Produit[]>([])
+  const [user, setUser] = useState<UserWithMagasin | null>(null)
+  const [produits, setProduits] = useState<ProduitWithFilters[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [modeles, setModeles] = useState<any[]>([])
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [modelSearchQuery, setModelSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   useEffect(() => {
     async function loadData() {
@@ -31,7 +56,7 @@ export default function MagasinCommandePage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = (await getUserProfile(currentUser.id)) as any
 
         if (profile.role !== 'magasin') {
           router.push('/dashboard')
@@ -40,12 +65,20 @@ export default function MagasinCommandePage() {
 
         setUser(profile)
 
-        const { data: produitsData } = await supabase
-          .from('produits')
-          .select('*')
-          .order('nom')
+        // Charger les produits et les modèles
+        const [produitsRes, modelesRes] = await Promise.all([
+          supabase.from('produits').select('*').order('nom'),
+          supabase.from('modeles').select('*').order('nom')
+        ])
 
-        setProduits(produitsData || [])
+        // Filtrer les produits pour ne garder que ceux qui sont actifs
+        const activeProduits = (produitsRes.data || []).map((p: any) => ({
+          ...p,
+          actif: p.actif !== false
+        })).filter((p: any) => p.actif)
+
+        setProduits(activeProduits || [])
+        setModeles(modelesRes.data || [])
       } catch (error) {
         console.error('Error loading data:', error)
         router.push('/login')
@@ -57,7 +90,36 @@ export default function MagasinCommandePage() {
     loadData()
   }, [router])
 
-  function updateQuantite(produit: Produit, quantite: number) {
+  // Filtrage des produits
+  const filteredProduits = produits.filter(produit => {
+    // 1. Filtrage par catégorie
+    if (selectedCategory && produit.categorie !== selectedCategory) return false
+
+    // 2. Filtrage par modèle (si catégorie echantillon_lri)
+    if (selectedCategory === 'echantillon_lri' && selectedModel && produit.modele_id !== selectedModel) return false
+
+    // 3. Filtrage par recherche texte
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      return produit.nom.toLowerCase().includes(query) ||
+        produit.reference.toLowerCase().includes(query)
+    }
+
+    return true
+  })
+
+  // Groupement des modèles par recherche
+  const filteredModeles = modeles.filter(m =>
+    m.nom.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  )
+
+  const totalPages = Math.ceil(filteredProduits.length / itemsPerPage)
+  const paginatedProduits = filteredProduits.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  function updateQuantite(produit: ProduitWithFilters, quantite: number) {
     if (quantite === 0) {
       setCart(prev => prev.filter(item => item.produit.id !== produit.id))
     } else {
@@ -91,28 +153,26 @@ export default function MagasinCommandePage() {
     setSubmitting(true)
 
     try {
-      const { data: commande, error: commandeError } = await supabase
-        .from('commandes')
+      const { data: commande, error: commandeError } = await (supabase
+        .from('commandes') as any)
         .insert({
           user_id: user.id,
           statut: 'en_attente',
         })
         .select()
         .single()
-
       if (commandeError) throw commandeError
 
-      const { error: magasinError } = await supabase
-        .from('commande_magasins')
+      const { error: magasinError } = await (supabase
+        .from('commande_magasins') as any)
         .insert({
           commande_id: commande.id,
           magasin_id: user.magasin_id,
         })
-
       if (magasinError) throw magasinError
 
-      const { error: produitsError } = await supabase
-        .from('commande_produits')
+      const { error: produitsError } = await (supabase
+        .from('commande_produits') as any)
         .insert(
           cart.map(item => ({
             commande_id: commande.id,
@@ -120,12 +180,11 @@ export default function MagasinCommandePage() {
             quantite: item.quantite,
           }))
         )
-
       if (produitsError) throw produitsError
 
       alert('Commande créée avec succès !')
       setCart([])
-      router.push('/magasin/historique')
+      router.push('/magasin')
     } catch (error: any) {
       console.error('Error creating order:', error)
       alert('Erreur lors de la création de la commande: ' + error.message)
@@ -139,30 +198,8 @@ export default function MagasinCommandePage() {
   }
 
   return (
-    <DashboardLayout user={user} title="Nouvelle Commande">
+    <DashboardLayout user={user as any} title="Nouvelle Commande">
       <div className="space-y-6">
-        {/* Info magasin */}
-        {user.magasins && (
-          <Card variant="elevated" className="animate-slideDown">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">Commande pour</p>
-                  <p className="text-lg font-bold text-stone-900">{user.magasins.nom}</p>
-                  <p className="text-sm text-stone-600">
-                    {user.magasins.ville} • <span className="font-mono font-semibold">{user.magasins.code}</span>
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Catalogue produits */}
         <Card variant="elevated" className="animate-slideUp">
           <CardHeader>
@@ -176,162 +213,201 @@ export default function MagasinCommandePage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {/* Search bar */}
-            <div className="mb-6">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher par référence ou nom..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 pl-12 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
-                />
-                <svg className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {produits
-                .filter(produit => {
-                  if (!searchQuery) return true
-                  const query = searchQuery.toLowerCase()
-                  return produit.nom.toLowerCase().includes(query) ||
-                         produit.reference.toLowerCase().includes(query)
-                })
-                .map((produit, idx) => (
-                <div
-                  key={produit.id}
-                  className="group border-2 border-stone-200 rounded-xl overflow-hidden hover:border-primary-300 hover:shadow-lg transition-all duration-200 animate-fadeIn"
-                  style={{ animationDelay: `${idx * 30}ms` }}
+          <CardContent className="space-y-6">
+            {/* Category Navigation */}
+            <div className="flex flex-wrap gap-2 pb-2">
+              <button
+                onClick={() => {
+                  setSelectedCategory(null)
+                  setSelectedModel(null)
+                  setCurrentPage(1)
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 ${!selectedCategory
+                  ? 'bg-stone-900 text-white border-stone-900 shadow-lg'
+                  : 'bg-white text-stone-600 border-stone-100 hover:border-stone-300'
+                  }`}
+              >
+                <span>🏢</span>
+                Tous les produits
+              </button>
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(cat.id)
+                    setSelectedModel(null)
+                    setCurrentPage(1)
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border-2 ${selectedCategory === cat.id
+                    ? `${cat.color.split(' ')[1]} ${cat.color.split(' ')[0]} ${cat.color.split(' ')[2]} shadow-md`
+                    : 'bg-white text-stone-600 border-stone-100 hover:border-stone-300'
+                    }`}
                 >
-                  <div className="relative overflow-hidden bg-stone-100">
-                    <img
-                      src={produit.image_url || 'https://via.placeholder.com/400x300'}
-                      alt={produit.nom}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {getQuantite(produit.id) > 0 && (
-                      <div className="absolute top-3 right-3">
-                        <span className="inline-flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-full font-bold shadow-lg">
-                          {getQuantite(produit.id)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-bold text-stone-900 mb-1">{produit.nom}</h3>
-                    <p className="text-sm text-stone-600 font-mono mb-2">{produit.reference}</p>
-                    {produit.description && (
-                      <p className="text-sm text-stone-600 mb-4 line-clamp-2">{produit.description}</p>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateQuantite(produit, Math.max(0, getQuantite(produit.id) - 1))}
-                        className="w-10 h-10 rounded-lg bg-stone-200 hover:bg-stone-300 flex items-center justify-center font-bold text-stone-700 transition-colors"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        value={getQuantite(produit.id)}
-                        onChange={(e) => updateQuantite(produit, parseInt(e.target.value) || 0)}
-                        className="flex-1 h-10 text-center border-2 border-stone-200 rounded-lg px-3 font-bold text-stone-900 focus:outline-none focus:border-primary-500"
-                      />
-                      <button
-                        onClick={() => updateQuantite(produit, getQuantite(produit.id) + 1)}
-                        className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 hover:shadow-lg text-white flex items-center justify-center font-bold transition-all"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  <span>{cat.icon}</span>
+                  {cat.label}
+                </button>
               ))}
             </div>
+
+            {/* Model Filter (Only for Échantillons LRI) */}
+            {selectedCategory === 'echantillon_lri' && (
+              <div className="animate-fadeIn p-6 bg-purple-50 rounded-2xl border border-purple-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h3 className="text-base font-bold text-purple-900 flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-[10px]">FIX</span>
+                      Filtrer par Modèle
+                    </h3>
+                  </div>
+                  {selectedModel && (
+                    <button
+                      onClick={() => setSelectedModel(null)}
+                      className="px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      Effacer le filtre modèle
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {filteredModeles.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => {
+                        setSelectedModel(selectedModel === m.id ? null : m.id)
+                        setCurrentPage(1)
+                      }}
+                      className={`group relative p-3 rounded-xl border-2 transition-all duration-300 text-left ${selectedModel === m.id
+                        ? 'bg-purple-600 border-purple-600 shadow-lg shadow-purple-600/20'
+                        : 'bg-white border-stone-100 hover:border-purple-300 hover:bg-purple-50'
+                        }`}
+                    >
+                      <p className={`font-bold truncate text-sm ${selectedModel === m.id ? 'text-white' : 'text-stone-900 group-hover:text-purple-700'}`}>{m.nom}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search bar */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Rechercher par référence ou nom..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full px-4 py-3 pl-12 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-stone-900 transition-all shadow-sm"
+              />
+              <svg className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Grid display */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedProduits.length > 0 ? (
+                paginatedProduits.map((produit) => (
+                  <div
+                    key={produit.id}
+                    className="group border-2 border-stone-200 rounded-xl overflow-hidden hover:border-stone-900 transition-all duration-200"
+                  >
+                    <div className="relative overflow-hidden bg-stone-100 aspect-[4/3]">
+                      <img
+                        src={produit.image_url || 'https://via.placeholder.com/400x300'}
+                        alt={produit.nom}
+                        className="w-full h-full object-cover"
+                      />
+                      {getQuantite(produit.id) > 0 && (
+                        <div className="absolute top-3 right-3">
+                          <span className="inline-flex items-center justify-center w-8 h-8 bg-stone-900 text-white rounded-full font-bold shadow-lg">
+                            {getQuantite(produit.id)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <h3 className="font-bold text-stone-900 text-sm line-clamp-1">{produit.nom}</h3>
+                        <p className="text-xs text-stone-500 font-mono">{produit.reference}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantite(produit, Math.max(0, getQuantite(produit.id) - 1))}
+                          className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center font-bold text-stone-700"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={getQuantite(produit.id)}
+                          onChange={(e) => updateQuantite(produit, parseInt(e.target.value) || 0)}
+                          className="flex-1 h-8 text-center border-2 border-stone-100 rounded-lg px-2 font-bold text-stone-900 focus:outline-none focus:border-stone-900"
+                        />
+                        <button
+                          onClick={() => updateQuantite(produit, getQuantite(produit.id) + 1)}
+                          className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-20 text-center bg-stone-50 rounded-2xl">
+                  <p className="text-stone-400 font-bold">Aucun produit trouvé</p>
+                </div>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </CardContent>
         </Card>
 
         {/* Récapitulatif & Validation */}
-        <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '100ms' }}>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-stone-700 flex items-center justify-center text-white font-bold text-lg">
-                2
-              </div>
-              <CardTitle className="text-xl">Récapitulatif et validation</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {cart.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gradient-to-br from-stone-100 to-stone-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                  </svg>
+        {cart.length > 0 && (
+          <Card variant="elevated" className="animate-slideUp">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-stone-700 flex items-center justify-center text-white font-bold text-lg">
+                  2
                 </div>
-                <p className="text-lg font-medium text-stone-900 mb-1">Votre panier est vide</p>
-                <p className="text-sm text-stone-500">Ajoutez des produits pour continuer</p>
+                <CardTitle className="text-xl">Valider la commande</CardTitle>
               </div>
-            ) : (
-              <>
-                <div className="space-y-3 mb-6">
-                  {cart.map(item => (
-                    <div key={item.produit.id} className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-400 to-accent-400 flex items-center justify-center text-white font-bold">
-                          {item.produit.nom.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-stone-900">{item.produit.nom}</p>
-                          <p className="text-sm text-stone-600">{item.produit.reference}</p>
-                        </div>
-                      </div>
-                      <span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-xl font-bold text-lg">
-                        {item.quantite}
-                      </span>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 mb-6">
+                {cart.map(item => (
+                  <div key={item.produit.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-sm truncate">{item.produit.nom}</p>
+                      <p className="text-xs text-stone-500">{item.produit.reference}</p>
                     </div>
-                  ))}
-                </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-bold text-lg shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                >
-                  {submitting ? (
-                    <>
-                      <svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Envoi en cours...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Valider la commande
-                    </>
-                  )}
-                </button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    <span className="font-black text-stone-900 bg-white px-3 py-1 rounded-lg border border-stone-200">
+                      x{item.quantite}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full px-6 py-4 bg-stone-900 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-stone-800 transition-all disabled:opacity-50"
+              >
+                {submitting ? 'Envoi en cours...' : 'Confirmer la commande'}
+              </button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   )

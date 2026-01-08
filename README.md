@@ -7,7 +7,7 @@ Plateforme web full-stack pour digitaliser le processus de gestion des commandes
 - **Frontend** : Next.js 14 (App Router) + React 18
 - **UI** : Tailwind CSS + shadcn/ui components
 - **Backend** : Supabase (Auth + PostgreSQL + Storage)
-- **IA** : Ollama (LLM local) pour génération d'emails
+- **IA** : OpenRouter API (GPT-4o-mini) pour génération d'emails pro
 - **Automation** : n8n (self-hosted) pour workflows email
 - **Déploiement** : Vercel
 
@@ -39,7 +39,7 @@ Plateforme web full-stack pour digitaliser le processus de gestion des commandes
 
 - **Node.js 18+** : https://nodejs.org/
 - **Compte Supabase** : Projet créé
-- **Ollama installé** sur votre serveur
+- **Clé API OpenRouter** : Pour la génération d'emails par IA
 - **n8n self-hosted** (optionnel, pour automatisation emails)
 
 ### 1. Cloner et installer
@@ -103,8 +103,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://meudxkmoyrzmhznhcvdz.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
-# Ollama (IA locale)
-OLLAMA_API_URL=http://your-server-ip:11434
+# IA (OpenRouter)
+NEXT_PUBLIC_OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Ollama (Optionnel - IA locale)
+# OLLAMA_API_URL=http://your-server-ip:11434
 
 # n8n Webhooks
 N8N_WEBHOOK_SEND_EMAIL=https://your-n8n.hostinger.com/webhook/send-email
@@ -154,9 +157,20 @@ RetailLR/
 └── package.json
 ```
 
-## 🔧 Configuration Ollama
+## 🔧 Configuration IA (OpenRouter)
 
-### 1. Installer Ollama sur votre serveur
+Le projet utilise désormais l'API **OpenRouter** par défaut pour plus de simplicité et de performance.
+
+1. Créer un compte sur [OpenRouter.ai](https://openrouter.ai/)
+2. Générer une clé API
+3. L'ajouter dans `.env.local` : `NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-...`
+
+Le modèle utilisé par défaut est `openai/gpt-4o-mini`.
+
+## 🤖 Configuration Locale (Optionnelle)
+
+Si vous souhaitez utiliser Ollama en local :
+1. Installer Ollama sur votre serveur
 
 ```bash
 curl https://ollama.ai/install.sh | sh

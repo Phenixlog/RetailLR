@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS magasins (
   nom TEXT NOT NULL,
   code TEXT UNIQUE NOT NULL, -- ex: "MAG_001"
   ville TEXT NOT NULL,
+  adresse TEXT,
+  responsable TEXT,
+  directeur_regional TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -29,8 +32,12 @@ CREATE TABLE IF NOT EXISTS produits (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enum pour les rôles utilisateurs
-CREATE TYPE user_role AS ENUM ('la_redoute', 'magasin', 'admin');
+-- Enum pour les rôles utilisateurs (si n'existe pas déjà)
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('la_redoute', 'magasin', 'admin');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Table des utilisateurs (extend auth.users)
 CREATE TABLE IF NOT EXISTS users (
@@ -38,6 +45,10 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   role user_role NOT NULL,
   magasin_id UUID REFERENCES magasins(id) ON DELETE SET NULL,
+  prenom TEXT,
+  nom TEXT,
+  telephone TEXT,
+  perimetre TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -68,6 +79,16 @@ CREATE TABLE IF NOT EXISTS commande_produits (
   produit_id UUID NOT NULL REFERENCES produits(id) ON DELETE CASCADE,
   quantite INTEGER NOT NULL CHECK (quantite > 0),
   UNIQUE(commande_id, produit_id)
+);
+
+-- Table de liaison commandes-magasins-produits avec quantités par magasin (N-N-N)
+CREATE TABLE IF NOT EXISTS commande_magasin_produits (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  commande_id UUID NOT NULL REFERENCES commandes(id) ON DELETE CASCADE,
+  magasin_id UUID NOT NULL REFERENCES magasins(id) ON DELETE CASCADE,
+  produit_id UUID NOT NULL REFERENCES produits(id) ON DELETE CASCADE,
+  quantite INTEGER NOT NULL CHECK (quantite > 0),
+  UNIQUE(commande_id, magasin_id, produit_id)
 );
 
 -- Table des photos
@@ -101,6 +122,7 @@ ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commandes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commande_magasins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commande_produits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commande_magasin_produits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE emails_sent ENABLE ROW LEVEL SECURITY;
 
@@ -276,6 +298,61 @@ WITH CHECK (
     SELECT 1 FROM commandes
     WHERE commandes.id = commande_produits.commande_id
     AND commandes.user_id = auth.uid()
+  )
+);
+
+-- ============================================
+-- POLICIES : COMMANDE_MAGASIN_PRODUITS
+-- ============================================
+
+-- Héritage des droits de lecture de commandes (par magasin)
+CREATE POLICY "Inherit commandes read rights"
+ON commande_magasin_produits FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM commandes c
+    WHERE c.id = commande_magasin_produits.commande_id
+    AND (
+      -- Own order
+      c.user_id = auth.uid()
+      OR
+      -- Magasin's order
+      EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = auth.uid()
+        AND u.magasin_id = commande_magasin_produits.magasin_id
+        AND u.role = 'magasin'
+      )
+      OR
+      -- Admin
+      EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = auth.uid()
+        AND u.role = 'admin'
+      )
+    )
+  )
+);
+
+-- Users peuvent insérer lors de la création de commande
+CREATE POLICY "Users can insert commande_magasin_produits"
+ON commande_magasin_produits FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM commandes
+    WHERE commandes.id = commande_magasin_produits.commande_id
+    AND commandes.user_id = auth.uid()
+  )
+);
+
+-- La Redoute et Admin peuvent modifier les quantités
+CREATE POLICY "La Redoute and Admin can update commande_magasin_produits"
+ON commande_magasin_produits FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid()
+    AND users.role IN ('la_redoute', 'admin')
   )
 );
 

@@ -58,8 +58,9 @@ INSERT INTO users (id, email, role, magasin_id) VALUES
 cp .env.local.example .env.local
 ```
 
-Éditer `.env.local` et ajouter la `SUPABASE_SERVICE_ROLE_KEY` :
-→ Project Settings → API → service_role key (secret)
+Éditer `.env.local` et ajouter les valeurs suivantes :
+- `SUPABASE_SERVICE_ROLE_KEY` : Project Settings → API
+- `NEXT_PUBLIC_OPENROUTER_API_KEY` : Votre clé API OpenRouter.ai
 
 ### 5. Lancer le projet
 
@@ -115,10 +116,9 @@ Maintenant que le projet tourne, il faut implémenter :
    - Génération email IA
    - Envoi email
 
-4. **API Ollama** (génération email)
-   - Endpoint local
-   - Prompt engineering
-   - Intégration frontend
+4. **IA (OpenRouter)**
+   - Get API Key from openrouter.ai
+   - Set NEXT_PUBLIC_OPENROUTER_API_KEY in .env.local
 
 5. **n8n Workflow** (envoi email)
    - Webhook send-email
