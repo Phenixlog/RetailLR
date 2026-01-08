@@ -13,7 +13,7 @@ import { CartMatrix } from '@/components/ui/CartMatrix'
 import { CartSummary } from '@/components/ui/CartSummary'
 import type { User, Produit } from '@/types/database.types'
 
-type ViewMode = 'catalogue' | 'panier' | 'recap'
+type ViewMode = 'magasins' | 'catalogue' | 'recap'
 
 export default function CommandePage() {
   const router = useRouter()
@@ -28,7 +28,7 @@ export default function CommandePage() {
   const [submitting, setSubmitting] = useState(false)
 
   // View state
-  const [currentView, setCurrentView] = useState<ViewMode>('catalogue')
+  const [currentView, setCurrentView] = useState<ViewMode>('magasins')
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('')
@@ -232,6 +232,23 @@ export default function CommandePage() {
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 p-1 bg-stone-100 rounded-xl">
           <button
+            onClick={() => setCurrentView('magasins')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'magasins'
+              ? 'bg-white text-stone-900 shadow-md'
+              : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            1. Magasins
+            {selectedMagasins.length > 0 && (
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-r from-primary-500 to-accent-500 text-white text-xs font-bold rounded-full">
+                {selectedMagasins.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setCurrentView('catalogue')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'catalogue'
               ? 'bg-white text-stone-900 shadow-md'
@@ -241,21 +258,9 @@ export default function CommandePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
-            Catalogue
-          </button>
-          <button
-            onClick={() => setCurrentView('panier')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'panier'
-              ? 'bg-white text-stone-900 shadow-md'
-              : 'text-stone-500 hover:text-stone-700'
-              }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Panier
+            2. Produits
             {getCartItemCount() > 0 && (
-              <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-r from-primary-500 to-accent-500 text-white text-xs font-bold rounded-full">
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-green-500 text-white text-xs font-bold rounded-full">
                 {getCartItemCount()}
               </span>
             )}
@@ -270,7 +275,7 @@ export default function CommandePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            Récap
+            3. Récap
           </button>
         </div>
 
@@ -285,13 +290,13 @@ export default function CommandePage() {
                 </div>
                 {getCartItemCount() > 0 && (
                   <button
-                    onClick={() => setCurrentView('panier')}
-                    className="px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                    onClick={() => setCurrentView('recap')}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Voir le panier ({getCartItemCount()})
+                    Valider ({getCartItemCount()})
                   </button>
                 )}
               </div>
@@ -446,26 +451,26 @@ export default function CommandePage() {
           </Card>
         )}
 
-        {/* PANIER VIEW */}
-        {currentView === 'panier' && (
+        {/* MAGASINS VIEW */}
+        {currentView === 'magasins' && (
           <Card variant="elevated" className="animate-fadeIn">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl">Panier Matriciel</CardTitle>
+                  <CardTitle className="text-xl">Sélection des Magasins</CardTitle>
                   <p className="text-sm text-stone-500 mt-1">
-                    {getCartItemCount()} produit(s) • {selectedMagasins.length} magasin(s) • {getGrandTotal()} unités
+                    {selectedMagasins.length} magasin(s) sélectionné(s) • {getCartItemCount()} produit(s) • {getGrandTotal()} unités
                   </p>
                 </div>
-                {getGrandTotal() > 0 && (
+                {selectedMagasins.length > 0 && (
                   <button
-                    onClick={() => setCurrentView('recap')}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                    onClick={() => setCurrentView('catalogue')}
+                    className="px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
-                    Valider ({getGrandTotal()} unités)
+                    Continuer vers Produits
                   </button>
                 )}
               </div>
@@ -482,7 +487,7 @@ export default function CommandePage() {
             <CardContent className="p-8">
               <CartSummary
                 onValidate={handleSubmitOrder}
-                onBack={() => setCurrentView('panier')}
+                onBack={() => setCurrentView('catalogue')}
                 isSubmitting={submitting}
               />
             </CardContent>
