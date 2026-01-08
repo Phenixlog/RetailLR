@@ -51,7 +51,7 @@ export default function EmailsTrackingPage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = await getUserProfile(currentUser.id) as any
         if (profile.role !== 'admin') {
           router.push('/dashboard')
           return
@@ -381,7 +381,7 @@ export default function EmailsTrackingPage() {
         </div>
 
         {/* Filtres et recherche */}
-        <Card variant="elevated" className="animate-slideUp" style={{animationDelay: '100ms'}}>
+        <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '100ms' }}>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -442,7 +442,7 @@ export default function EmailsTrackingPage() {
         </Card>
 
         {/* Tableau des emails */}
-        <Card variant="elevated" className="animate-slideUp" style={{animationDelay: '200ms'}}>
+        <Card variant="elevated" className="animate-slideUp" style={{ animationDelay: '200ms' }}>
           <CardContent className="p-6">
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -547,18 +547,16 @@ export default function EmailsTrackingPage() {
 
                                 <button
                                   onClick={() => handleRelancer(email)}
-                                  className={`p-2 rounded-lg transition-colors group ${
-                                    needsRelance(email)
+                                  className={`p-2 rounded-lg transition-colors group ${needsRelance(email)
                                       ? 'bg-red-50 hover:bg-red-100'
                                       : 'hover:bg-orange-50'
-                                  }`}
+                                    }`}
                                   title="Envoyer relance"
                                 >
-                                  <svg className={`w-5 h-5 ${
-                                    needsRelance(email)
+                                  <svg className={`w-5 h-5 ${needsRelance(email)
                                       ? 'text-red-600'
                                       : 'text-stone-600 group-hover:text-orange-600'
-                                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                   </svg>
                                 </button>
@@ -628,31 +626,28 @@ export default function EmailsTrackingPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setResponseStatus('confirme')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    responseStatus === 'confirme'
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${responseStatus === 'confirme'
                       ? 'bg-green-100 text-green-800 border-2 border-green-500'
                       : 'bg-stone-100 text-stone-700 border-2 border-stone-200 hover:border-green-300'
-                  }`}
+                    }`}
                 >
                   ✅ Confirmé
                 </button>
                 <button
                   onClick={() => setResponseStatus('refuse')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    responseStatus === 'refuse'
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${responseStatus === 'refuse'
                       ? 'bg-red-100 text-red-800 border-2 border-red-500'
                       : 'bg-stone-100 text-stone-700 border-2 border-stone-200 hover:border-red-300'
-                  }`}
+                    }`}
                 >
                   ❌ Refusé
                 </button>
                 <button
                   onClick={() => setResponseStatus('ignore')}
-                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${
-                    responseStatus === 'ignore'
+                  className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all ${responseStatus === 'ignore'
                       ? 'bg-gray-100 text-gray-800 border-2 border-gray-500'
                       : 'bg-stone-100 text-stone-700 border-2 border-stone-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   🔇 Ignoré
                 </button>

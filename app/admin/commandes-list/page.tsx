@@ -27,7 +27,7 @@ export default function AdminPage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = await getUserProfile(currentUser.id) as any
 
         // Vérifier que c'est bien un admin
         if (profile.role !== 'admin') {

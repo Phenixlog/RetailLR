@@ -52,7 +52,7 @@ export default function ClientDashboard() {
         return
       }
 
-      const profile = await getUserProfile(currentUser.id)
+      const profile = await getUserProfile(currentUser.id) as any
       if (profile.role !== 'la_redoute') {
         router.push('/dashboard')
         return

@@ -41,7 +41,7 @@ export default function MagasinDashboard() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = await getUserProfile(currentUser.id) as any
         if (profile.role !== 'magasin') {
           router.push('/dashboard')
           return

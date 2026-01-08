@@ -44,7 +44,7 @@ export default function ClientPage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = await getUserProfile(currentUser.id) as any
 
         if (profile.role !== 'la_redoute') {
           router.push('/dashboard')
@@ -280,8 +280,8 @@ export default function ClientPage() {
                 <button
                   onClick={() => setSelectedCategory(null)}
                   className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 border-2 ${selectedCategory === null
-                      ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg shadow-primary-500/30'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg shadow-primary-500/30'
+                    : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300 hover:bg-stone-50'
                     }`}
                 >
                   <span className="flex items-center gap-2">
@@ -294,8 +294,8 @@ export default function ClientPage() {
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 border-2 ${selectedCategory === cat.id
-                        ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg shadow-primary-500/30'
-                        : `${cat.color} hover:shadow-md`
+                      ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg shadow-primary-500/30'
+                      : `${cat.color} hover:shadow-md`
                       }`}
                   >
                     <span className="flex items-center gap-2">

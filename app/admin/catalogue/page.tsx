@@ -35,7 +35,7 @@ export default function CatalogImportPage() {
                     router.push('/login')
                     return
                 }
-                const profile = await getUserProfile(currentUser.id)
+                const profile = await getUserProfile(currentUser.id) as any
                 if (profile.role !== 'admin') {
                     router.push('/dashboard')
                     return

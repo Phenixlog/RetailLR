@@ -23,7 +23,7 @@ export default function StatistiquesPage() {
           return
         }
 
-        const profile = await getUserProfile(currentUser.id)
+        const profile = await getUserProfile(currentUser.id) as any
         if (profile.role !== 'admin') {
           router.push('/dashboard')
           return
