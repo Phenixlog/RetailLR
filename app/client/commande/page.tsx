@@ -93,11 +93,7 @@ export default function CommandePage() {
         setProduits(activeProduits)
         setAllMagasins(magasinsData || [])
         setModeles(modelesData || [])
-
-        // Initialize magasins in cart context
-        if (magasinsData) {
-          setMagasins(magasinsData)
-        }
+        // Note: magasins are NOT selected by default - user must select them manually
       } catch (error) {
         console.error('Error loading data:', error)
         router.push('/login')
@@ -238,8 +234,8 @@ export default function CommandePage() {
           <button
             onClick={() => setCurrentView('catalogue')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'catalogue'
-                ? 'bg-white text-stone-900 shadow-md'
-                : 'text-stone-500 hover:text-stone-700'
+              ? 'bg-white text-stone-900 shadow-md'
+              : 'text-stone-500 hover:text-stone-700'
               }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,8 +246,8 @@ export default function CommandePage() {
           <button
             onClick={() => setCurrentView('panier')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'panier'
-                ? 'bg-white text-stone-900 shadow-md'
-                : 'text-stone-500 hover:text-stone-700'
+              ? 'bg-white text-stone-900 shadow-md'
+              : 'text-stone-500 hover:text-stone-700'
               }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,8 +263,8 @@ export default function CommandePage() {
           <button
             onClick={() => setCurrentView('recap')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'recap'
-                ? 'bg-white text-stone-900 shadow-md'
-                : 'text-stone-500 hover:text-stone-700'
+              ? 'bg-white text-stone-900 shadow-md'
+              : 'text-stone-500 hover:text-stone-700'
               }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,8 +315,8 @@ export default function CommandePage() {
                   <button
                     onClick={() => { setSelectedCategory(null); setSelectedModel(null); }}
                     className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 border-2 ${selectedCategory === null
-                        ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg'
-                        : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
+                      ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg'
+                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
                       }`}
                   >
                     Tous
@@ -330,8 +326,8 @@ export default function CommandePage() {
                       key={cat.id}
                       onClick={() => { setSelectedCategory(cat.id); setSelectedModel(null); }}
                       className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 border-2 ${selectedCategory === cat.id
-                          ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg'
-                          : `${cat.color}`
+                        ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white border-transparent shadow-lg'
+                        : `${cat.color}`
                         }`}
                     >
                       <span className="flex items-center gap-2">
@@ -359,8 +355,8 @@ export default function CommandePage() {
                       <button
                         onClick={() => setSelectedModel(null)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedModel === null
-                            ? 'bg-stone-900 text-white'
-                            : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300'
+                          ? 'bg-stone-900 text-white'
+                          : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300'
                           }`}
                       >
                         TOUS
@@ -372,8 +368,8 @@ export default function CommandePage() {
                             key={mod.id}
                             onClick={() => setSelectedModel(mod.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedModel === mod.id
-                                ? 'bg-primary-500 text-white'
-                                : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300'
+                              ? 'bg-primary-500 text-white'
+                              : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300'
                               }`}
                           >
                             {mod.nom}
