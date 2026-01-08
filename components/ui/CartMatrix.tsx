@@ -46,8 +46,8 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                     <button
                         onClick={handleToggleAll}
                         className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${allSelected
-                                ? 'bg-stone-200 text-stone-700 hover:bg-stone-300'
-                                : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md hover:shadow-lg'
+                            ? 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+                            : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md hover:shadow-lg'
                             }`}
                     >
                         {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
@@ -73,8 +73,8 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                                 key={magasin.id}
                                 onClick={() => toggleMagasin(magasin)}
                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isSelected
-                                        ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md'
-                                        : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300 hover:bg-primary-50'
+                                    ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md'
+                                    : 'bg-white border border-stone-200 text-stone-600 hover:border-primary-300 hover:bg-primary-50'
                                     }`}
                             >
                                 <span className="flex items-center gap-1.5">
@@ -104,7 +104,7 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                 </div>
             )}
 
-            {/* Matrice produits x magasins */}
+            {/* Matrice magasins (lignes) x produits (colonnes) */}
             {cartItems.length > 0 && selectedMagasins.length > 0 && (
                 <div className="border rounded-xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
@@ -112,35 +112,32 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                             <thead className="bg-gradient-to-r from-stone-100 to-stone-200">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-bold text-stone-700 uppercase tracking-wider sticky left-0 bg-stone-100 z-10">
-                                        Produit
+                                        Magasin
                                     </th>
-                                    {selectedMagasins.map(magasin => (
-                                        <th key={magasin.id} className="px-3 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider min-w-[100px]">
+                                    {cartItems.map(item => (
+                                        <th key={item.produit.id} className="px-3 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider min-w-[100px]">
                                             <div className="flex flex-col items-center">
-                                                <span>{magasin.nom}</span>
-                                                <span className="text-[10px] text-stone-500 font-normal">{magasin.code}</span>
+                                                <span className="line-clamp-2">{item.produit.nom}</span>
+                                                <span className="text-[10px] text-stone-500 font-normal font-mono">{item.produit.reference}</span>
                                             </div>
                                         </th>
                                     ))}
                                     <th className="px-4 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider bg-primary-100">
                                         Total
                                     </th>
-                                    <th className="px-3 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider">
-                                        Action
-                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-100 bg-white">
-                                {cartItems.map((item) => (
-                                    <tr key={item.produit.id} className="hover:bg-stone-50">
+                                {selectedMagasins.map((magasin) => (
+                                    <tr key={magasin.id} className="hover:bg-stone-50">
                                         <td className="px-4 py-3 sticky left-0 bg-white z-10">
                                             <div>
-                                                <p className="font-medium text-stone-900 text-sm">{item.produit.nom}</p>
-                                                <p className="text-xs text-stone-500 font-mono">{item.produit.reference}</p>
+                                                <p className="font-medium text-stone-900 text-sm">{magasin.nom}</p>
+                                                <p className="text-xs text-stone-500 font-mono">{magasin.code}</p>
                                             </div>
                                         </td>
-                                        {selectedMagasins.map(magasin => (
-                                            <td key={magasin.id} className="px-3 py-3 text-center">
+                                        {cartItems.map(item => (
+                                            <td key={item.produit.id} className="px-3 py-3 text-center">
                                                 <input
                                                     type="number"
                                                     min="0"
@@ -152,19 +149,8 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                                         ))}
                                         <td className="px-4 py-3 text-center bg-primary-50">
                                             <span className="inline-flex items-center justify-center w-10 h-8 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg font-bold text-sm">
-                                                {getTotalForProduct(item.produit.id)}
+                                                {getTotalForMagasin(magasin.id)}
                                             </span>
-                                        </td>
-                                        <td className="px-3 py-3 text-center">
-                                            <button
-                                                onClick={() => removeProduct(item.produit.id)}
-                                                className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
-                                                title="Supprimer"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -174,10 +160,10 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                                     <td className="px-4 py-3 font-bold text-stone-700 sticky left-0 bg-stone-100 z-10">
                                         TOTAL
                                     </td>
-                                    {selectedMagasins.map(magasin => (
-                                        <td key={magasin.id} className="px-3 py-3 text-center">
+                                    {cartItems.map(item => (
+                                        <td key={item.produit.id} className="px-3 py-3 text-center">
                                             <span className="inline-flex items-center justify-center w-10 h-8 bg-stone-600 text-white rounded-lg font-bold text-sm">
-                                                {getTotalForMagasin(magasin.id)}
+                                                {getTotalForProduct(item.produit.id)}
                                             </span>
                                         </td>
                                     ))}
@@ -186,10 +172,28 @@ export function CartMatrix({ allMagasins }: CartMatrixProps) {
                                             {getGrandTotal()} unités
                                         </span>
                                     </td>
-                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+
+                    {/* Actions sur les produits */}
+                    <div className="p-4 bg-stone-50 border-t border-stone-200">
+                        <p className="text-xs text-stone-500 mb-2">Supprimer un produit :</p>
+                        <div className="flex flex-wrap gap-2">
+                            {cartItems.map(item => (
+                                <button
+                                    key={item.produit.id}
+                                    onClick={() => removeProduct(item.produit.id)}
+                                    className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-medium hover:bg-red-200 transition-colors flex items-center gap-1"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    {item.produit.nom.length > 20 ? item.produit.nom.substring(0, 20) + '...' : item.produit.nom}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
