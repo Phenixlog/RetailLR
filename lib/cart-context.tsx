@@ -34,6 +34,7 @@ interface CartContextType {
     toggleMagasin: (magasin: Magasin) => void
     setMagasins: (magasins: Magasin[]) => void
     clearCart: () => void
+    loadFromDraft: (magasins: Magasin[], items: CartItem[]) => void
 
     // Computed
     getTotalForProduct: (produitId: string) => number
@@ -141,6 +142,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Clear entire cart
     const clearCart = () => {
         setCart(new Map())
+        setSelectedMagasins([])
+    }
+
+    // Load from draft
+    const loadFromDraft = (magasins: Magasin[], items: CartItem[]) => {
+        setSelectedMagasins(magasins)
+        const newCart = new Map<string, CartItem>()
+        items.forEach(item => {
+            newCart.set(item.produit.id, item)
+        })
+        setCart(newCart)
     }
 
     // Get total quantity for a product (sum across all magasins)
@@ -192,6 +204,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 toggleMagasin,
                 setMagasins,
                 clearCart,
+                loadFromDraft,
                 getTotalForProduct,
                 getTotalForMagasin,
                 getGrandTotal,

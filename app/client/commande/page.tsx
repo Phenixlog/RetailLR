@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronRight } from 'lucide-react'
 import { getCurrentUser, getUserProfile, supabase } from '@/lib/supabase'
 import { useCart, Magasin } from '@/lib/cart-context'
 import DashboardLayout from '@/components/layout/DashboardLayout'
@@ -13,7 +14,7 @@ import { CartMatrix } from '@/components/ui/CartMatrix'
 import { CartSummary } from '@/components/ui/CartSummary'
 import type { User, Produit } from '@/types/database.types'
 
-type ViewMode = 'magasins' | 'catalogue' | 'recap'
+type ViewMode = 'magasins' | 'catalogue' | 'quantites' | 'recap'
 
 export default function CommandePage() {
   const router = useRouter()
@@ -26,6 +27,9 @@ export default function CommandePage() {
   const [modeles, setModeles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [drafts, setDrafts] = useState<any[]>([])
+  const [loadingDrafts, setLoadingDrafts] = useState(false)
 
   // View state
   const [currentView, setCurrentView] = useState<ViewMode>('magasins')
@@ -45,7 +49,8 @@ export default function CommandePage() {
     setMagasins,
     getCartItemCount,
     getGrandTotal,
-    clearCart
+    clearCart,
+    loadFromDraft
   } = useCart()
 
   // Categories
@@ -93,7 +98,7 @@ export default function CommandePage() {
         setProduits(activeProduits)
         setAllMagasins(magasinsData || [])
         setModeles(modelesData || [])
-        // Note: magasins are NOT selected by default - user must select them manually
+        if (profile) fetchDrafts(profile.id)
       } catch (error) {
         console.error('Error loading data:', error)
         router.push('/login')
@@ -103,15 +108,85 @@ export default function CommandePage() {
     }
 
     loadData()
-  }, [router, setMagasins])
+  }, [router])
+
+  async function fetchDrafts(userId: string) {
+    setLoadingDrafts(true)
+    try {
+      const { data, error } = await supabase
+        .from('commandes')
+        .select(`
+          id,
+          created_at,
+          commande_magasins(count),
+          commande_produits(count)
+        `)
+        .eq('user_id', userId)
+        .eq('statut', 'brouillon')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setDrafts(data || [])
+    } catch (error) {
+      console.error('Error fetching drafts:', error)
+    } finally {
+      setLoadingDrafts(false)
+    }
+  }
+
+  async function handleLoadDraft(draftId: string) {
+    setLoading(true)
+    try {
+      // 1. Fetch magasins
+      const { data: magasinsData, error: magasinsError } = await supabase
+        .from('commande_magasins')
+        .select('magasin:magasins(*)')
+        .eq('commande_id', draftId)
+
+      if (magasinsError) throw magasinsError
+
+      // 2. Fetch products and quantities
+      const { data: produitsData, error: produitsError } = await supabase
+        .from('commande_produits')
+        .select(`
+          produit:produits(*),
+          commande_magasin_produits(magasin_id, quantite)
+        `)
+        .eq('commande_id', draftId)
+
+      if (produitsError) throw produitsError
+
+      // 3. Format data for cart-context
+      const magasins = magasinsData.map((m: any) => m.magasin)
+      const cartItems = produitsData.map((p: any) => {
+        const quantities: Record<string, number> = {}
+        p.commande_magasin_produits.forEach((q: any) => {
+          quantities[q.magasin_id] = q.quantite
+        })
+        return {
+          produit: p.produit,
+          quantities
+        }
+      })
+
+      loadFromDraft(magasins, cartItems)
+      setCurrentView('catalogue')
+      showSuccess('Brouillon chargé !')
+    } catch (error: any) {
+      console.error('Error loading draft:', error)
+      showError('Erreur lors du chargement: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [selectedCategory, selectedModel, searchQuery])
 
-  // Submit order
-  async function handleSubmitOrder() {
+  // Submit order (can be draft or actual order)
+  async function handleSubmitOrder(status: 'en_attente' | 'brouillon' = 'en_attente') {
     if (selectedMagasins.length === 0) {
       showError('Veuillez sélectionner au moins un magasin')
       return
@@ -122,12 +197,16 @@ export default function CommandePage() {
       return
     }
 
-    if (getGrandTotal() === 0) {
+    if (status === 'en_attente' && getGrandTotal() === 0) {
       showError('Veuillez définir des quantités pour vos produits')
       return
     }
 
-    setSubmitting(true)
+    if (status === 'en_attente') {
+      setSubmitting(true)
+    } else {
+      setSavingDraft(true)
+    }
 
     try {
       if (!user) throw new Error('User not found')
@@ -137,7 +216,7 @@ export default function CommandePage() {
         .from('commandes')
         .insert({
           user_id: user.id,
-          statut: 'en_attente',
+          statut: status,
         } as any)
         .select()
         .single() as any)
@@ -193,20 +272,21 @@ export default function CommandePage() {
 
       if (magasinProduitsInsert.length > 0) {
         const { error: magasinProduitsError } = await (supabase
-          .from('commande_magasin_produits')
-          .insert(magasinProduitsInsert) as any)
+          .from('commande_magasin_produits' as any)
+          .insert(magasinProduitsInsert as any))
 
         if (magasinProduitsError) throw magasinProduitsError
       }
 
-      showSuccess('Commande créée avec succès !')
+      showSuccess(status === 'brouillon' ? 'Brouillon enregistré !' : 'Commande créée avec succès !')
       clearCart()
       router.push('/client/historique')
     } catch (error: any) {
       console.error('Error creating order:', error)
-      showError('Erreur lors de la création de la commande: ' + error.message)
+      showError('Erreur : ' + error.message)
     } finally {
       setSubmitting(false)
+      setSavingDraft(false)
     }
   }
 
@@ -266,6 +346,23 @@ export default function CommandePage() {
             )}
           </button>
           <button
+            onClick={() => setCurrentView('quantites')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'quantites'
+              ? 'bg-white text-stone-900 shadow-md'
+              : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h.01M7 11h.01M7 15h.01M7 19h.01M7 23h.01M11 7h10M11 3h10M11 11h10M11 15h10M11 19h10M11 23h10" />
+            </svg>
+            3. Quantités
+            {getCartItemCount() > 0 && (
+              <span className="inline-flex items-center justify-center w-6 h-6 bg-primary-500 text-white text-xs font-bold rounded-full">
+                {getGrandTotal()}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setCurrentView('recap')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${currentView === 'recap'
               ? 'bg-white text-stone-900 shadow-md'
@@ -275,7 +372,7 @@ export default function CommandePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            3. Récap
+            4. Récap
           </button>
         </div>
 
@@ -290,13 +387,13 @@ export default function CommandePage() {
                 </div>
                 {getCartItemCount() > 0 && (
                   <button
-                    onClick={() => setCurrentView('recap')}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                    onClick={() => setCurrentView('quantites')}
+                    className="px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
-                    Valider ({getCartItemCount()})
+                    Suivant ({getCartItemCount()} produits)
                   </button>
                 )}
               </div>
@@ -309,7 +406,7 @@ export default function CommandePage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <span><strong>Sélectionnez des magasins</strong> dans l'onglet Panier avant d'ajouter des produits.</span>
+                    <span><strong>Sélectionnez des magasins</strong> dans l'onglet Magasins avant d'ajouter des produits.</span>
                   </p>
                 </div>
               )}
@@ -459,7 +556,7 @@ export default function CommandePage() {
                 <div>
                   <CardTitle className="text-xl">Sélection des Magasins</CardTitle>
                   <p className="text-sm text-stone-500 mt-1">
-                    {selectedMagasins.length} magasin(s) sélectionné(s) • {getCartItemCount()} produit(s) • {getGrandTotal()} unités
+                    {selectedMagasins.length} magasin(s) sélectionné(s)
                   </p>
                 </div>
                 {selectedMagasins.length > 0 && (
@@ -470,13 +567,77 @@ export default function CommandePage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
-                    Continuer vers Produits
+                    Suivant : Catalogue Produits
+                  </button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* Drafts Section */}
+              {drafts.length > 0 && (
+                <div className="bg-blue-50/50 rounded-xl p-6 border border-blue-100">
+                  <h3 className="text-blue-900 font-bold flex items-center gap-2 mb-4">
+                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Reprendre un brouillon
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {drafts.map(draft => (
+                      <button
+                        key={draft.id}
+                        onClick={() => handleLoadDraft(draft.id)}
+                        className="bg-white p-4 rounded-xl border border-blue-100 hover:border-blue-300 hover:shadow-md transition-all text-left group"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-mono text-blue-500">#{draft.id.substring(0, 8)}</span>
+                          <span className="text-[10px] text-stone-400">
+                            {new Date(draft.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold text-stone-800 group-hover:text-blue-600 transition-colors">
+                          {draft.commande_produits[0]?.count || 0} produits • {draft.commande_magasins[0]?.count || 0} magasins
+                        </p>
+                        <div className="mt-3 flex items-center text-xs text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                          Reprendre <ChevronRight className="w-3 h-3 ml-1" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <CartMatrix allMagasins={allMagasins} mode="selection" />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* QUANTITES VIEW */}
+        {currentView === 'quantites' && (
+          <Card variant="elevated" className="animate-fadeIn">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">Matrice des Quantités</CardTitle>
+                  <p className="text-sm text-stone-500 mt-1">
+                    Définissez les quantités par magasin pour chaque produit sélectionné
+                  </p>
+                </div>
+                {getGrandTotal() > 0 && (
+                  <button
+                    onClick={() => setCurrentView('recap')}
+                    className="px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                    Suivant : Récapitulatif
                   </button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
-              <CartMatrix allMagasins={allMagasins} />
+              <CartMatrix allMagasins={allMagasins} mode="quantities" />
             </CardContent>
           </Card>
         )}
@@ -486,9 +647,11 @@ export default function CommandePage() {
           <Card variant="elevated" className="animate-fadeIn">
             <CardContent className="p-8">
               <CartSummary
-                onValidate={handleSubmitOrder}
-                onBack={() => setCurrentView('catalogue')}
+                onValidate={() => handleSubmitOrder('en_attente')}
+                onSaveDraft={() => handleSubmitOrder('brouillon')}
+                onBack={() => setCurrentView('quantites')}
                 isSubmitting={submitting}
+                isSavingDraft={savingDraft}
               />
             </CardContent>
           </Card>

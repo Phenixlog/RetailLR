@@ -4,11 +4,28 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser, getUserProfile, supabase } from '@/lib/supabase'
 import DashboardLayout from '@/components/layout/DashboardLayout'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { useToast } from '@/components/ui/Toast'
 import type { User } from '@/types/database.types'
+import {
+  History,
+  Calendar,
+  Package,
+  Store,
+  ChevronRight,
+  ArrowLeft,
+  Edit3,
+  Save,
+  X,
+  Search,
+  Box,
+  MapPin,
+  Clock,
+  RefreshCcw,
+  Plus
+} from 'lucide-react'
 
 export default function HistoriquePage() {
   const router = useRouter()
@@ -105,18 +122,14 @@ export default function HistoriquePage() {
     setDateFin('')
   }
 
-  // Quand on sélectionne un magasin, préparer les produits avec leurs quantités
   function handleSelectMagasin(magasin: any) {
     setSelectedMagasin(magasin)
 
-    // Récupérer les produits de la commande avec leurs quantités pour ce magasin
     const produitsWithQuantities = selectedCommande.commande_produits.map((cp: any) => {
-      // Chercher s'il existe une quantité spécifique pour ce magasin
       const magasinProduit = selectedCommande.commande_magasin_produits?.find(
         (cmp: any) => cmp.magasin_id === magasin.magasins.id && cmp.produit_id === cp.produit_id
       )
 
-      // Calculer la quantité globale = somme des quantités de tous les magasins
       const quantiteGlobale = selectedCommande.commande_magasins.reduce((sum: number, cm: any) => {
         const mp = selectedCommande.commande_magasin_produits?.find(
           (cmp: any) => cmp.magasin_id === cm.magasins.id && cmp.produit_id === cp.produit_id
@@ -127,14 +140,13 @@ export default function HistoriquePage() {
       return {
         produit_id: cp.produit_id,
         produit: cp.produits,
-        quantite: magasinProduit?.quantite || cp.quantite, // Quantité spécifique ou globale
+        quantite: magasinProduit?.quantite || cp.quantite,
         quantiteGlobale: quantiteGlobale
       }
     })
 
     setMagasinProduits(produitsWithQuantities)
 
-    // Initialiser les quantités éditées
     const initialQuantities: Record<string, number> = {}
     produitsWithQuantities.forEach((p: any) => {
       initialQuantities[p.produit_id] = p.quantite
@@ -147,7 +159,6 @@ export default function HistoriquePage() {
 
     setSaving(true)
     try {
-      // Sauvegarder chaque quantité modifiée
       for (const [produit_id, quantite] of Object.entries(editedQuantities)) {
         if (quantite > 0) {
           const response = await fetch('/api/commandes/update-quantity', {
@@ -169,7 +180,6 @@ export default function HistoriquePage() {
       }
 
       showSuccess('Quantités mises à jour avec succès !')
-      // Recharger les données
       setSelectedMagasin(null)
       setSelectedCommande(null)
       setLoading(true)
@@ -186,336 +196,376 @@ export default function HistoriquePage() {
     return <PageLoader />
   }
 
-  // Vue détaillée d'un magasin spécifique
+  // VUE DÉTAILLÉE PAR MAGASIN
   if (selectedMagasin) {
     return (
       <DashboardLayout user={user} title="Détail par magasin">
-        <Card variant="elevated" className="animate-slideUp">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setSelectedMagasin(null)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-all duration-200 group"
-              >
-                <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="font-medium">Retour à la commande</span>
-              </button>
-              <StatusBadge status={selectedCommande.statut} showDot />
+        <div className="space-y-8 pb-12 animate-fadeIn px-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => setSelectedMagasin(null)}
+              className="p-3 bg-white shadow-md rounded-2xl text-stone-600 hover:text-primary-600 transition-all hover:scale-110 active:scale-95 border border-stone-100"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div className="flex-1 min-w-[200px]">
+              <h1 className="text-2xl font-black text-stone-900 leading-tight mb-1">
+                {selectedMagasin.magasins.nom}
+              </h1>
+              <p className="text-stone-500 font-bold flex items-center gap-2 text-sm uppercase tracking-wider">
+                <MapPin className="w-4 h-4 text-primary-500" />
+                {selectedMagasin.magasins.ville} • {selectedMagasin.magasins.code}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                  {selectedMagasin.magasins.nom.charAt(0)}
+            <div className="flex items-center gap-3">
+              <StatusBadge status={selectedCommande.statut} />
+            </div>
+          </div>
+
+          <Card className="border-none shadow-2xl bg-white/50 backdrop-blur-xl rounded-[2rem] overflow-hidden">
+            <div className="p-4 md:p-8">
+              <div className="flex items-center gap-4 mb-8 bg-amber-50 p-6 rounded-3xl border border-amber-200">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                  <Edit3 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-stone-900">{selectedMagasin.magasins.nom}</h2>
-                  <p className="text-stone-500">{selectedMagasin.magasins.ville} • {selectedMagasin.magasins.code}</p>
+                  <p className="text-sm font-black text-amber-900">Édition des quantités</p>
+                  <p className="text-xs font-bold text-amber-700/80">Personnalisez les produits destinés à ce point de vente.</p>
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-sm text-amber-800">
-                  <span className="font-bold">💡 Astuce :</span> Modifiez les quantités ci-dessous pour personnaliser cette commande pour ce magasin spécifiquement.
-                </p>
-              </div>
-
-              <div className="border rounded-xl overflow-hidden">
-                <table className="min-w-full">
-                  <thead className="bg-gradient-to-r from-stone-50 to-stone-100">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-stone-700 uppercase tracking-wider">Produit</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-stone-700 uppercase tracking-wider">Réf.</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider">Qté Globale</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-stone-700 uppercase tracking-wider">Qté Magasin</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {magasinProduits.map((mp: any) => (
-                      <tr key={mp.produit_id} className="hover:bg-stone-50">
-                        <td className="px-4 py-4 text-sm font-medium text-stone-900">{mp.produit.nom}</td>
-                        <td className="px-4 py-4 text-sm text-stone-600 font-mono">{mp.produit.reference}</td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-8 bg-stone-200 text-stone-600 rounded-lg font-bold text-sm">
-                            {mp.quantiteGlobale}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            value={editedQuantities[mp.produit_id] || 0}
-                            onChange={(e) => setEditedQuantities({
-                              ...editedQuantities,
-                              [mp.produit_id]: parseInt(e.target.value) || 0
-                            })}
-                            className="w-20 px-3 py-2 text-center border-2 border-stone-200 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all font-bold"
-                          />
-                        </td>
+              <div className="overflow-hidden rounded-3xl border border-stone-100 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-stone-50/50">
+                      <tr>
+                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-stone-400">Produit</th>
+                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-stone-400">Référence</th>
+                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-stone-400">Qté Globale</th>
+                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-stone-400">Dédiée</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {magasinProduits.map((mp: any) => (
+                        <tr key={mp.produit_id} className="hover:bg-stone-50 transition-colors group">
+                          <td className="px-6 py-6">
+                            <p className="font-black text-stone-900 group-hover:text-primary-600 transition-colors uppercase text-sm">{mp.produit.nom}</p>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className="px-3 py-1.5 bg-stone-100 text-stone-600 rounded-xl text-xs font-black font-mono border border-stone-200">
+                              {mp.produit.reference}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6 text-center">
+                            <span className="text-sm font-black text-stone-400">
+                              {mp.quantiteGlobale}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                min="0"
+                                value={editedQuantities[mp.produit_id] || 0}
+                                onChange={(e) => setEditedQuantities({
+                                  ...editedQuantities,
+                                  [mp.produit_id]: parseInt(e.target.value) || 0
+                                })}
+                                className="w-24 px-4 py-3 text-center bg-stone-50 border-2 border-stone-200 rounded-2xl focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all font-black text-xl outline-none"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col sm:flex-row justify-end gap-4 mt-10">
                 <button
                   onClick={() => setSelectedMagasin(null)}
-                  className="px-6 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-all"
+                  className="px-8 py-5 bg-stone-100 text-stone-600 rounded-[1.5rem] font-black hover:bg-stone-200 transition-all active:scale-95 flex items-center justify-center gap-3 border border-stone-200"
                 >
-                  Annuler
+                  <X className="w-5 h-5" />
+                  ANNULER
                 </button>
                 <button
                   onClick={handleSaveQuantities}
                   disabled={saving}
-                  className="px-8 py-3 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-xl font-bold shadow-lg shadow-primary-600/30 hover:shadow-xl transition-all disabled:opacity-50"
+                  className="px-12 py-5 bg-gradient-to-r from-stone-900 to-stone-800 text-white rounded-[1.5rem] font-black shadow-xl shadow-stone-900/20 hover:shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95"
                 >
-                  {saving ? 'Enregistrement...' : 'Sauvegarder les quantités'}
+                  {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 text-primary-400" />}
+                  {saving ? 'ENREGISTREMENT...' : 'SAUVEGARDER'}
                 </button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       </DashboardLayout>
     )
   }
 
-  // Vue détaillée d'une commande (avec liste cliquable de magasins)
+  // VUE DÉTAILLÉE D'UNE COMMANDE
   if (selectedCommande) {
     return (
       <DashboardLayout user={user} title="Détail de la commande">
-        <Card variant="elevated" className="animate-slideUp">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setSelectedCommande(null)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-stone-700 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-all duration-200 group"
-              >
-                <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="font-medium">Retour à l'historique</span>
-              </button>
-              <StatusBadge status={selectedCommande.statut} showDot />
+        <div className="space-y-8 pb-12 animate-fadeIn px-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => setSelectedCommande(null)}
+              className="p-3 bg-white shadow-md rounded-2xl text-stone-600 hover:text-primary-600 transition-all hover:scale-110 active:scale-95 border border-stone-100"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div className="flex-1 min-w-[200px]">
+              <h1 className="text-2xl font-black text-stone-900 leading-tight mb-1">
+                Commande <span className="text-primary-600">#{selectedCommande.id.slice(0, 8).toUpperCase()}</span>
+              </h1>
+              <p className="text-stone-500 font-bold flex items-center gap-2 text-sm uppercase tracking-wider">
+                <Calendar className="w-4 h-4 text-primary-500" />
+                {new Date(selectedCommande.created_at).toLocaleString('fr-FR', {
+                  day: '2-digit', month: 'long', year: 'numeric'
+                })}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                  Commande #{selectedCommande.id.slice(0, 8)}
-                </h2>
-                <p className="text-stone-500">
-                  {new Date(selectedCommande.created_at).toLocaleString('fr-FR', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
+            <StatusBadge status={selectedCommande.statut} />
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    Magasins ({selectedCommande.commande_magasins.length}) — Cliquez pour voir le détail
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* MAGASINS */}
+            <Card className="border-none shadow-xl bg-white/50 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-black text-stone-900 flex items-center gap-3">
+                    <div className="w-2 h-8 bg-primary-500 rounded-full shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
+                    Magasins Destinataires
                   </h3>
-                  <div className="space-y-2">
-                    {selectedCommande.commande_magasins.map((cm: any, idx: number) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSelectMagasin(cm)}
-                        className="w-full p-4 bg-gradient-to-r from-stone-50 to-blue-50 rounded-xl border-2 border-stone-200 hover:border-primary-400 hover:from-primary-50 hover:to-accent-50 transition-all text-left group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-stone-900 group-hover:text-primary-700">{cm.magasins.nom}</p>
-                            <p className="text-sm text-stone-600">{cm.magasins.ville} • {cm.magasins.code}</p>
-                          </div>
-                          <svg className="w-5 h-5 text-stone-400 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                  <span className="px-4 py-2 bg-stone-100 rounded-xl text-[10px] font-black text-stone-500 border border-stone-200 tracking-[0.2em]">
+                    {selectedCommande.commande_magasins.length} POINTS DE VENTE
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {selectedCommande.commande_magasins.map((cm: any, idx: number) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectMagasin(cm)}
+                      className="group w-full p-6 bg-white rounded-[1.8rem] border border-stone-100 shadow-sm hover:border-primary-500 hover:shadow-2xl transition-all text-left flex items-center justify-between"
+                      style={{ animationDelay: `${idx * 50}ms` }}
+                    >
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-stone-50 flex items-center justify-center text-stone-600 group-hover:bg-primary-500 group-hover:text-white transition-all duration-300">
+                          <Store className="w-7 h-7" />
                         </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    Produits ({selectedCommande.commande_produits.length}) — Quantités globales
-                  </h3>
-                  <div className="border rounded-xl overflow-hidden">
-                    <table className="min-w-full">
-                      <thead className="bg-gradient-to-r from-stone-50 to-stone-100">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-stone-700">Produit</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-stone-700">Réf.</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold text-stone-700">Qté</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-100">
-                        {selectedCommande.commande_produits.map((cp: any, idx: number) => {
-                          // Calculer la quantité globale = somme des quantités par magasin
-                          const totalQuantity = selectedCommande.commande_magasins.reduce((sum: number, cm: any) => {
-                            const magasinProduit = selectedCommande.commande_magasin_produits?.find(
-                              (cmp: any) => cmp.magasin_id === cm.magasins.id && cmp.produit_id === cp.produit_id
-                            )
-                            // Si quantité spécifique existe, l'utiliser, sinon utiliser la quantité de base
-                            return sum + (magasinProduit?.quantite ?? cp.quantite)
-                          }, 0)
-
-                          return (
-                            <tr key={idx} className="hover:bg-stone-50">
-                              <td className="px-4 py-3 text-sm font-medium">{cp.produits.nom}</td>
-                              <td className="px-4 py-3 text-sm text-stone-600">{cp.produits.reference}</td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 text-white rounded-lg font-bold text-sm">
-                                  {totalQuantity}
-                                </span>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                        <div>
+                          <p className="font-black text-stone-900 group-hover:text-primary-600 transition-colors uppercase text-sm tracking-tight">{cm.magasins.nom}</p>
+                          <p className="text-[10px] font-black text-stone-400 mt-1 uppercase tracking-widest">{cm.magasins.ville} • {cm.magasins.code}</p>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-stone-50 flex items-center justify-center text-stone-300 group-hover:bg-primary-50 group-hover:text-primary-500 group-hover:translate-x-1 transition-all">
+                        <ChevronRight className="w-6 h-6" />
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </Card>
+
+            {/* PRODUITS */}
+            <Card className="border-none shadow-xl bg-white/50 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-black text-stone-900 flex items-center gap-3">
+                    <div className="w-2 h-8 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+                    Récapitulatif Articles
+                  </h3>
+                </div>
+
+                <div className="overflow-hidden rounded-3xl border border-stone-100 bg-white shadow-sm">
+                  <table className="w-full text-left">
+                    <thead className="bg-stone-50/50">
+                      <tr>
+                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-stone-400">Désignation</th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-stone-400">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-50">
+                      {selectedCommande.commande_produits.map((cp: any, idx: number) => {
+                        const totalQuantity = selectedCommande.commande_magasins.reduce((sum: number, cm: any) => {
+                          const mp = selectedCommande.commande_magasin_produits?.find(
+                            (it: any) => it.magasin_id === cm.magasins.id && it.produit_id === cp.produit_id
+                          )
+                          return sum + (mp?.quantite ?? cp.quantite)
+                        }, 0)
+
+                        return (
+                          <tr key={idx} className="group transition-colors hover:bg-stone-50/50">
+                            <td className="px-6 py-6">
+                              <p className="text-[10px] font-black text-stone-400 font-mono mb-1 group-hover:text-primary-500 transition-colors tracking-widest">{cp.produits.reference}</p>
+                              <p className="font-black text-stone-900 text-sm tracking-tight uppercase leading-tight">{cp.produits.nom}</p>
+                            </td>
+                            <td className="px-6 py-6 text-right">
+                              <span className="inline-flex items-center justify-center min-w-[3.5rem] h-11 px-4 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl font-black text-sm shadow-lg shadow-stone-900/20">
+                                {totalQuantity}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
       </DashboardLayout>
     )
   }
 
+  // LISTE DES COMMANDES
   return (
-    <DashboardLayout user={user} title="Historique des commandes">
-      <div className="space-y-6">
-        {/* Filtres de dates */}
-        <Card variant="elevated" className="animate-slideDown">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-end gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-stone-700 mb-2">
-                  Date de début
-                </label>
+    <DashboardLayout user={user} title="Historique">
+      <div className="space-y-8 pb-12 animate-fadeIn px-4">
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-[2rem] bg-gradient-to-br from-stone-900 to-stone-800 flex items-center justify-center text-white shadow-2xl relative overflow-hidden">
+              <History className="w-8 h-8 relative z-10" />
+              <div className="absolute top-0 right-0 w-8 h-8 bg-primary-500/20 blur-xl"></div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-stone-900 leading-tight">Historique</h1>
+              <p className="text-stone-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
+                <RefreshCcw className="w-3 h-3 text-primary-500" />
+                Liste actualisée
+              </p>
+            </div>
+          </div>
+          <div className="px-8 py-4 bg-white/50 backdrop-blur-md rounded-[1.5rem] text-sm font-black text-stone-900 border border-white shadow-xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600">
+              <Box className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest leading-none mb-1">Total</p>
+              <p className="text-lg leading-none">{commandes.length} Commandes</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RECHERCHE & FILTRES */}
+        <Card className="border-none shadow-xl bg-white/80 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
+          <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1 w-full relative">
+              <div className="absolute left-6 top-1/2 -translate-y-1/2 text-stone-300">
+                <Search className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                placeholder="Chercher par ID ou date..."
+                className="w-full pl-16 pr-6 py-5 bg-stone-100 border-2 border-transparent rounded-[1.8rem] focus:bg-white focus:border-primary-500 transition-all font-black text-stone-900 outline-none placeholder:text-stone-300"
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex-1 md:w-48 bg-stone-100 p-2 rounded-[1.5rem] flex items-center gap-2 border border-stone-200">
                 <input
                   type="date"
                   value={dateDebut}
                   onChange={(e) => setDateDebut(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                  className="bg-transparent font-black text-xs text-stone-900 outline-none w-full px-2 py-2"
                 />
               </div>
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-stone-700 mb-2">
-                  Date de fin
-                </label>
+              <div className="flex-1 md:w-48 bg-stone-100 p-2 rounded-[1.5rem] flex items-center gap-2 border border-stone-200">
                 <input
                   type="date"
                   value={dateFin}
                   onChange={(e) => setDateFin(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                  className="bg-transparent font-black text-xs text-stone-900 outline-none w-full px-2 py-2"
                 />
               </div>
               {(dateDebut || dateFin) && (
                 <button
                   onClick={resetFilters}
-                  className="px-6 py-3 bg-stone-100 text-stone-700 rounded-xl font-semibold hover:bg-stone-200 transition-all whitespace-nowrap"
+                  className="p-4 bg-stone-900 text-white rounded-2xl hover:bg-stone-800 transition-all shadow-lg active:scale-90"
                 >
-                  Réinitialiser
+                  <RefreshCcw className="w-5 h-5" />
                 </button>
               )}
             </div>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card variant="elevated" className="animate-slideUp">
-          <CardHeader>
-            <CardTitle className="text-2xl">Historique des commandes</CardTitle>
-            {commandes.length > 0 && (
-              <p className="text-sm text-stone-500 mt-1">
-                {commandes.length} commande{commandes.length > 1 ? 's' : ''} trouvée{commandes.length > 1 ? 's' : ''}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent>
-            {commandes.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-gradient-to-br from-stone-100 to-stone-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                </div>
-                <p className="text-lg font-medium text-stone-900 mb-1">Aucune commande</p>
-                <p className="text-sm text-stone-500 mb-6">Créez votre première commande pour commencer</p>
-                <button
-                  onClick={() => router.push('/client/commande')}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-xl font-semibold shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 transition-all"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Nouvelle commande
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {commandes.map((commande, idx) => (
-                  <div
-                    key={commande.id}
-                    onClick={() => setSelectedCommande(commande)}
-                    className="group p-5 border-2 border-stone-200 rounded-xl hover:border-primary-300 hover:bg-gradient-to-r hover:from-primary-50 hover:to-accent-50 cursor-pointer transition-all duration-200 animate-fadeIn"
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-lg font-bold text-stone-900">#{commande.id.slice(0, 8)}</span>
-                          <StatusBadge status={commande.statut} />
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-stone-600">
-                          <span className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            {new Date(commande.created_at).toLocaleDateString('fr-FR')}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            {commande.commande_magasins.length} magasin(s)
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            {commande.commande_produits.reduce((sum: number, cp: any) => sum + cp.quantite, 0)} produit(s)
-                          </span>
-                        </div>
+        {/* COMMANDES GRID */}
+        {commandes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 text-stone-400 bg-white/50 backdrop-blur-md shadow-2xl rounded-[3.5rem] animate-fadeIn border border-white">
+            <div className="w-32 h-32 rounded-[2.5rem] bg-stone-50 flex items-center justify-center mb-8 border border-stone-100">
+              <Box className="w-16 h-16 opacity-10" />
+            </div>
+            <p className="text-2xl font-black text-stone-900 mb-2">Aucune commande</p>
+            <p className="font-bold text-stone-400 mb-10 text-center px-8">Essayez de modifier vos filtres pour voir vos anciennes commandes.</p>
+            <button
+              onClick={() => router.push('/client/commande')}
+              className="px-10 py-5 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-[1.8rem] font-black shadow-2xl shadow-primary-500/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
+            >
+              <Plus className="w-7 h-7" />
+              NOUVELLE COMMANDE
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {commandes.map((commande, idx) => (
+              <button
+                key={commande.id}
+                onClick={() => setSelectedCommande(commande)}
+                className="group relative w-full p-8 rounded-[3rem] bg-white border border-stone-100 hover:border-primary-500 hover:shadow-2xl transition-all text-left flex flex-col justify-between gap-8 animate-slideUp"
+                style={{ animationDelay: `${idx * 100}ms` }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-stone-50 flex items-center justify-center text-stone-600 group-hover:bg-primary-500 group-hover:text-white transition-all duration-500 shadow-sm relative overflow-hidden">
+                      <Package className="w-8 h-8 relative z-10" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-stone-500/10 group-hover:opacity-0"></div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="text-xl font-black text-stone-900 tracking-tight uppercase group-hover:text-primary-600 transition-colors">#{commande.id.slice(0, 8)}</p>
                       </div>
-                      <svg className="w-6 h-6 text-stone-400 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(commande.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="translate-y-1">
+                    <StatusBadge status={commande.statut} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 pt-4 border-t border-stone-50">
+                  <div className="flex-1 flex gap-2">
+                    <span className="px-4 py-2 bg-stone-50 text-[10px] font-black text-stone-500 rounded-xl group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors uppercase tracking-widest border border-stone-100">
+                      {commande.commande_magasins.length} MAGS
+                    </span>
+                    <span className="px-4 py-2 bg-stone-50 text-[10px] font-black text-stone-500 rounded-xl group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors uppercase tracking-widest border border-stone-100">
+                      {commande.commande_produits.length} ARTS
+                    </span>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center text-stone-300 group-hover:bg-primary-500 group-hover:text-white group-hover:translate-x-1 transition-all">
+                    <ChevronRight className="w-6 h-6" />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      <style jsx global>{`
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-slideUp { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+      `}</style>
     </DashboardLayout>
   )
 }

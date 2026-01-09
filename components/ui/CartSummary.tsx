@@ -4,11 +4,13 @@ import { useCart } from '@/lib/cart-context'
 
 interface CartSummaryProps {
     onValidate: () => void
+    onSaveDraft: () => void
     onBack: () => void
     isSubmitting: boolean
+    isSavingDraft?: boolean
 }
 
-export function CartSummary({ onValidate, onBack, isSubmitting }: CartSummaryProps) {
+export function CartSummary({ onValidate, onSaveDraft, onBack, isSubmitting, isSavingDraft }: CartSummaryProps) {
     const {
         cart,
         selectedMagasins,
@@ -139,28 +141,52 @@ export function CartSummary({ onValidate, onBack, isSubmitting }: CartSummaryPro
                     </svg>
                     Modifier le panier
                 </button>
-                <button
-                    onClick={onValidate}
-                    disabled={isSubmitting || grandTotal === 0}
-                    className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                    {isSubmitting ? (
-                        <>
-                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Validation en cours...
-                        </>
-                    ) : (
-                        <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Valider la commande
-                        </>
-                    )}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onSaveDraft}
+                        disabled={isSubmitting || isSavingDraft || grandTotal === 0}
+                        className="px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold border border-blue-100 hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {isSavingDraft ? (
+                            <>
+                                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Enregistrement...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                </svg>
+                                Enregistrer en brouillon
+                            </>
+                        )}
+                    </button>
+                    <button
+                        onClick={onValidate}
+                        disabled={isSubmitting || isSavingDraft || grandTotal === 0}
+                        className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Validation en cours...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Valider la commande
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     )

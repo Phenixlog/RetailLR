@@ -106,21 +106,21 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          statut: 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
+          statut: 'brouillon' | 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
           created_at: string
           confirmed_at: string | null
         }
         Insert: {
           id?: string
           user_id: string
-          statut?: 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
+          statut?: 'brouillon' | 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
           created_at?: string
           confirmed_at?: string | null
         }
         Update: {
           id?: string
           user_id?: string
-          statut?: 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
+          statut?: 'brouillon' | 'en_attente' | 'en_preparation' | 'confirmee' | 'envoyee'
           created_at?: string
           confirmed_at?: string | null
         }
@@ -212,6 +212,29 @@ export type Database = {
           sent_at?: string
           sent_by?: string
           relance?: boolean
+        }
+      }
+      commande_magasin_produits: {
+        Row: {
+          id: string
+          commande_id: string
+          magasin_id: string
+          produit_id: string
+          quantite: number
+        }
+        Insert: {
+          id?: string
+          commande_id: string
+          magasin_id: string
+          produit_id: string
+          quantite: number
+        }
+        Update: {
+          id?: string
+          commande_id?: string
+          magasin_id?: string
+          produit_id?: string
+          quantite?: number
         }
       }
     }
